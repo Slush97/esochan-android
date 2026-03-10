@@ -1710,6 +1710,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             public boolean showFullTextIsVisible = false;
             public JellyBeanSpanFixTextView repliesView;
             public boolean repliesIsVisible = false;
+            public View replyButton;
             public TextView postsCountView;
             public boolean postsCountIsVisible = false;
         }
@@ -1875,8 +1876,21 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 tag.commentView = (ClickableLinksTextView) view.findViewById(R.id.post_comment);
                 tag.showFullTextView = (TextView) view.findViewById(R.id.post_show_full_text);
                 tag.repliesView = (JellyBeanSpanFixTextView) view.findViewById(R.id.post_replies);
+                tag.replyButton = view.findViewById(R.id.post_reply_button);
                 tag.postsCountView = (TextView) view.findViewById(R.id.post_posts_count);
-                if (fragment().pageType == TYPE_POSTSLIST) {
+                if (fragment().pageType == TYPE_POSTSLIST && !fragment().presentationModel.source.boardModel.readonlyBoard) {
+                    // Show reply button on each post
+                    tag.replyButton.setVisibility(View.VISIBLE);
+                    tag.replyButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            try {
+                                fragment().openReply(tag.position, false, null);
+                            } catch (Exception e) {
+                                Logger.e(TAG, e);
+                            }
+                        }
+                    });
                     CompatibilityImpl.setCustomSelectionActionModeMenuCallback(tag.commentView,
                             R.string.context_menu_reply_with_quote,
                             ThemeUtils.getActionbarIcon(fragment().activity.getTheme(), fragment().resources, R.attr.actionAddPost),
