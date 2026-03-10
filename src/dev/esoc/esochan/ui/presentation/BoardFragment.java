@@ -481,9 +481,12 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         menu.add(Menu.NONE, R.id.menu_catalog, 103, resources.getString(R.string.menu_catalog)).setIcon(R.drawable.ic_menu_list);
         menu.add(Menu.NONE, R.id.menu_search, 104, resources.getString(R.string.menu_search)).setIcon(android.R.drawable.ic_menu_search);
         menu.add(Menu.NONE, R.id.menu_save_page, 105, resources.getString(R.string.menu_save_page)).setIcon(android.R.drawable.ic_menu_save);
-        menu.add(Menu.NONE, R.id.menu_board_gallery, 106, resources.getString(R.string.menu_board_gallery)).setIcon(android.R.drawable.
+        menu.add(Menu.NONE, R.id.menu_download_all_images, 106,
+                resources.getString(R.string.menu_download_all_images))
+                .setIcon(ThemeUtils.getActionbarIcon(activity.getTheme(), resources, R.attr.actionSave));
+        menu.add(Menu.NONE, R.id.menu_board_gallery, 107, resources.getString(R.string.menu_board_gallery)).setIcon(android.R.drawable.
                 ic_menu_slideshow);
-        menu.add(Menu.NONE, R.id.menu_quickaccess_add, 107, resources.getString(R.string.menu_quickaccess_add)).setIcon(R.drawable.
+        menu.add(Menu.NONE, R.id.menu_quickaccess_add, 108, resources.getString(R.string.menu_quickaccess_add)).setIcon(R.drawable.
                 ic_menu_add_bookmark);
         this.menu = menu;
         updateMenu();
@@ -497,6 +500,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             boolean catalogMenuVisible = false;
             boolean searchMenuVisible = false;
             boolean savePageMenuVisible = false;
+            boolean downloadAllImagesMenuVisible = false;
             boolean boardGallryMenuVisible = false;
             boolean quickaccessAddMenuVisible = false;
             if (tabModel.type != TabModel.TYPE_LOCAL && pageType != TYPE_SEARCHLIST && listLoaded &&
@@ -535,12 +539,14 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             }
             if (tabModel.type != TabModel.TYPE_LOCAL && pageType == TYPE_POSTSLIST && listLoaded) {
                 savePageMenuVisible = true;
+                downloadAllImagesMenuVisible = true;
             }
             menu.findItem(R.id.menu_add_post).setVisible(addPostMenuVisible);
             menu.findItem(R.id.menu_update).setVisible(updateMenuVisible);
             menu.findItem(R.id.menu_catalog).setVisible(catalogMenuVisible);
             menu.findItem(R.id.menu_search).setVisible(searchMenuVisible);
             menu.findItem(R.id.menu_save_page).setVisible(savePageMenuVisible);
+            menu.findItem(R.id.menu_download_all_images).setVisible(downloadAllImagesMenuVisible);
             menu.findItem(R.id.menu_board_gallery).setVisible(boardGallryMenuVisible);
             menu.findItem(R.id.menu_quickaccess_add).setVisible(quickaccessAddMenuVisible);
         } catch (NullPointerException e) {
@@ -577,6 +583,9 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 return true;
             case R.id.menu_save_page:
                 saveThisPage();
+                return true;
+            case R.id.menu_download_all_images:
+                downloadAllImages();
                 return true;
             case R.id.menu_board_gallery:
                 openGridGallery();
@@ -3192,7 +3201,52 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
     private void downloadFile(AttachmentModel attachment) {
         downloadFile(attachment, false);
     }
-    
+
+    private void downloadAllImages() {
+        if (!CompatibilityUtils.hasAccessStorage(activity)) return;
+        List<Triple<AttachmentModel, String, String>> allAttachments = presentationModel.getAttachments();
+        if (allAttachments == null || allAttachments.isEmpty()) {
+            Toast.makeText(activity, R.string.download_all_no_images, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final List<AttachmentModel> downloadable = new ArrayList<AttachmentModel>();
+        for (Triple<AttachmentModel, String, String> triple : allAttachments) {
+            if (triple.getLeft().type != AttachmentModel.TYPE_OTHER_NOTFILE) {
+                downloadable.add(triple.getLeft());
+            }
+        }
+        if (downloadable.isEmpty()) {
+            Toast.makeText(activity, R.string.download_all_no_images, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(activity)
+            .setMessage(resources.getString(R.string.download_all_confirm_format, downloadable.size()))
+            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    int queued = 0;
+                    for (AttachmentModel att : downloadable) {
+                        DownloadingService.DownloadingQueueItem item =
+                                new DownloadingService.DownloadingQueueItem(att, presentationModel.source.boardModel);
+                        String fileName = Attachments.getAttachmentLocalFileName(att, presentationModel.source.boardModel);
+                        if (!DownloadingService.isInQueue(item) && !DownloadStorage.fileExists(activity, tabModel.pageModel.chanName, null, fileName)) {
+                            Intent downloadIntent = new Intent(activity, DownloadingService.class);
+                            downloadIntent.putExtra(DownloadingService.EXTRA_DOWNLOADING_ITEM, item);
+                            activity.startService(downloadIntent);
+                            queued++;
+                        }
+                    }
+                    if (queued > 0) {
+                        Toast.makeText(activity, resources.getString(R.string.download_all_queued_format, queued), Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(activity, R.string.notification_download_exists_or_in_queue, Toast.LENGTH_LONG).show();
+                    }
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
     public static String getCustomSubdir(UrlPageModel pageModel) {
         if (pageModel == null || pageModel.boardName == null || pageModel.threadNumber == null || pageModel.type != UrlPageModel.TYPE_THREADPAGE)
             return null;

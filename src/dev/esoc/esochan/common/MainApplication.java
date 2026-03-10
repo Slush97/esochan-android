@@ -228,6 +228,7 @@ public class MainApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         registerActivityLifecycleCallbacks(new EdgeToEdgeCallbacks());
         if (isGalleryProcess()) return;
         initObjects();
@@ -240,7 +241,6 @@ public class MainApplication extends Application {
             nm.createNotificationChannel(new NotificationChannel(
                     "tabs_tracker", getString(R.string.channel_tabs_tracker), NotificationManager.IMPORTANCE_LOW));
         }
-        instance = this;
     }
     
     @Override

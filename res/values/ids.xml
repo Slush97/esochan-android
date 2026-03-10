@@ -43,7 +43,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <item name="menu_share_link" type="id"/>
     <item name="menu_reverse_search" type="id"/>
     <item name="menu_quickaccess_add" type="id"/>
-    
+    <item name="menu_download_all_images" type="id"/>
+
     <item name="context_menu_move" type="id"/>
     <item name="context_menu_copy_url" type="id"/>
     <item name="context_menu_favorites" type="id"/>

@@ -23,6 +23,7 @@ dependencies {
     implementation libs.androidx.lifecycle.viewmodel
     implementation libs.androidx.lifecycle.runtime
     implementation libs.androidx.lifecycle.livedata
+    implementation libs.androidx.security.crypto
 }
 
 android {

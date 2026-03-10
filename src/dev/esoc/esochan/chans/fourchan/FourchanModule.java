@@ -30,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import dev.esoc.esochan.http.HttpCookie;
+import dev.esoc.esochan.http.HttpHeader;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -39,7 +40,6 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceGroup;
 import android.preference.PreferenceScreen;
@@ -62,6 +62,7 @@ import dev.esoc.esochan.api.models.ThreadModel;
 import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.api.util.ChanModels;
 import dev.esoc.esochan.common.Async;
+import dev.esoc.esochan.common.SecurePreferences;
 import dev.esoc.esochan.http.ExtendedMultipartBuilder;
 import dev.esoc.esochan.http.streamer.HttpRequestModel;
 import dev.esoc.esochan.http.streamer.HttpStreamer;
@@ -106,34 +107,82 @@ public class FourchanModule extends CloudflareChanModule {
     @Override
     protected void initHttpClient() {
         super.initHttpClient();
-        setPasscodeCookie(preferences.getString(getSharedKey(PREF_KEY_PASS_COOKIE), ""), false);
+        String cookieKey = getSharedKey(PREF_KEY_PASS_COOKIE);
+        SecurePreferences.INSTANCE.migrateFromPlain(preferences, cookieKey);
+        SecurePreferences.INSTANCE.migrateFromPlain(preferences, getSharedKey(PREF_KEY_PASS_TOKEN));
+        SecurePreferences.INSTANCE.migrateFromPlain(preferences, getSharedKey(PREF_KEY_PASS_PIN));
+        setPasscodeCookie(SecurePreferences.INSTANCE.get(cookieKey), false);
     }
     
+    private static String maskCredential(String value) {
+        if (value == null || value.isEmpty()) return "";
+        if (value.length() <= 4) return "****";
+        return "****" + value.substring(value.length() - 4);
+    }
+
     private void addPasscodePreference(PreferenceGroup preferenceGroup) {
         final Context context = preferenceGroup.getContext();
         PreferenceScreen passScreen = preferenceGroup.getPreferenceManager().createPreferenceScreen(context);
         passScreen.setTitle("4chan pass");
-        EditTextPreference passTokenPreference = new EditTextPreference(context);
-        EditTextPreference passPINPreference = new EditTextPreference(context);
+        Preference passTokenPreference = new Preference(context);
+        passTokenPreference.setTitle("Token");
+        passTokenPreference.setSummary(maskCredential(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN))));
+        passTokenPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                final android.widget.EditText input = new android.widget.EditText(context);
+                input.setSingleLine();
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                input.setText(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN)));
+                new AlertDialog.Builder(context)
+                    .setTitle("Token")
+                    .setView(input)
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_TOKEN), input.getText().toString());
+                            preference.setSummary(maskCredential(input.getText().toString()));
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+                return true;
+            }
+        });
+        Preference passPINPreference = new Preference(context);
+        passPINPreference.setTitle("PIN");
+        passPINPreference.setSummary(maskCredential(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN))));
+        passPINPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                final android.widget.EditText input = new android.widget.EditText(context);
+                input.setSingleLine();
+                input.setInputType(InputType.TYPE_CLASS_NUMBER);
+                input.setText(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN)));
+                new AlertDialog.Builder(context)
+                    .setTitle("PIN")
+                    .setView(input)
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_PIN), input.getText().toString());
+                            preference.setSummary(maskCredential(input.getText().toString()));
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+                return true;
+            }
+        });
         Preference passLoginPreference = new Preference(context);
         Preference passClearPreference = new Preference(context);
-        passTokenPreference.setTitle("Token");
-        passTokenPreference.setDialogTitle("Token");
-        passTokenPreference.setKey(getSharedKey(PREF_KEY_PASS_TOKEN));
-        passTokenPreference.getEditText().setSingleLine();
-        passTokenPreference.getEditText().setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-        passPINPreference.setTitle("PIN");
-        passPINPreference.setDialogTitle("PIN");
-        passPINPreference.setKey(getSharedKey(PREF_KEY_PASS_PIN));
-        passPINPreference.getEditText().setSingleLine();
-        passPINPreference.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
         passLoginPreference.setTitle("Log In");
         passLoginPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
                 if (!useHttps()) Toast.makeText(context, "Using HTTPS even if HTTP is selected", Toast.LENGTH_SHORT).show();
-                final String token = preferences.getString(getSharedKey(PREF_KEY_PASS_TOKEN), "");
-                final String pin = preferences.getString(getSharedKey(PREF_KEY_PASS_PIN), "");
+                final String token = SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN));
+                final String pin = SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN));
                 final String authUrl = "https://sys.4chan.org/auth"; //only https
                 final CancellableTask passAuthTask = new CancellableTask.BaseCancellableTask();
                 final ProgressDialog passAuthProgressDialog = new ProgressDialog(context);
@@ -156,7 +205,8 @@ public class FourchanModule extends CloudflareChanModule {
                             formBuilder.add("act", "do_login");
                             formBuilder.add("id", token);
                             formBuilder.add("pin", pin);
-                            HttpRequestModel request = HttpRequestModel.builder().setPOST(formBuilder.build()).build();
+                            HttpRequestModel request = HttpRequestModel.builder().setPOST(formBuilder.build())
+                                    .setCustomHeaders(getAuthHeaders()).build();
                             String response = HttpStreamer.getInstance().getStringFromUrl(authUrl, request, httpClient, null, passAuthTask, false);
                             if (passAuthTask.isCancelled()) return;
                             if (response.contains("Your device is now authorized")) {
@@ -241,7 +291,7 @@ public class FourchanModule extends CloudflareChanModule {
     
     private void setPasscodeCookie(String cookie, boolean saveToPreferences) {
         if (cookie == null || cookie.equals("0")) cookie = "";
-        if (saveToPreferences) preferences.edit().putString(getSharedKey(PREF_KEY_PASS_COOKIE), cookie).commit();
+        if (saveToPreferences) SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_COOKIE), cookie);
         if (cookie.length() > 0) {
             usingPasscode = true;
             HttpCookie c1 = new HttpCookie("pass_id", cookie);
@@ -273,6 +323,22 @@ public class FourchanModule extends CloudflareChanModule {
         addProxyPreferences(preferenceGroup);
     }
     
+    private HttpHeader[] getPostHeaders(String boardName, String origin) {
+        return new HttpHeader[] {
+            new HttpHeader("Origin", origin),
+            new HttpHeader("Referer", origin + "/" + boardName + "/"),
+            new HttpHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        };
+    }
+
+    private HttpHeader[] getAuthHeaders() {
+        return new HttpHeader[] {
+            new HttpHeader("Origin", "https://sys.4chan.org"),
+            new HttpHeader("Referer", "https://sys.4chan.org/auth"),
+            new HttpHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        };
+    }
+
     private boolean useHttps() {
         return useHttps(true);
     }
@@ -414,7 +480,8 @@ public class FourchanModule extends CloudflareChanModule {
         if (model.attachments != null && model.attachments.length != 0) postEntityBuilder.addFile("upfile", model.attachments[0]);
         if (model.custommark) postEntityBuilder.addString("spoiler", "on");
 
-        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build()).build();
+        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build())
+                .setCustomHeaders(getPostHeaders(model.boardName, "https://boards.4chan.org")).build();
         String response;
         try {
             response = HttpStreamer.getInstance().getStringFromUrl(url, request, httpClient, listener, task, true);
@@ -447,7 +514,8 @@ public class FourchanModule extends CloudflareChanModule {
                 addString(model.postNumber, "delete");
         if (model.onlyFiles) postEntityBuilder.addString("onlyimgdel", "on");
         postEntityBuilder.addString("mode", "usrdel").addString("pwd", model.password);
-        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build()).build();
+        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build())
+                .setCustomHeaders(getPostHeaders(model.boardName, "https://boards.4chan.org")).build();
         String response = HttpStreamer.getInstance().getStringFromUrl(url, request, httpClient, listener, task, false);
         Matcher errorMatcher = ERROR_POSTING.matcher(response);
         if (errorMatcher.find()) {
@@ -469,7 +537,8 @@ public class FourchanModule extends CloudflareChanModule {
                 addString("t-response", captchaPair[1]).
                 addString("board", model.boardName).
                 addString("no", model.postNumber);
-        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build()).build();
+        HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build())
+                .setCustomHeaders(getPostHeaders(model.boardName, "https://boards.4chan.org")).build();
         String response = HttpStreamer.getInstance().getStringFromUrl(url, request, httpClient, listener, task, false);
         if (response.contains("https://www.4chan.org/banned")) throw new Exception("You can't report posts because you are banned");
         if (response.contains("You seem to have mistyped the CAPTCHA")) throw new Exception("You seem to have mistyped the CAPTCHA");

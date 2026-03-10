@@ -166,7 +166,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="menu_open">Open</string>
     <string name="menu_open_player">Open external player</string>
     <string name="menu_quickaccess_add">Add to Quick Access</string>
-    
+    <string name="menu_download_all_images">Download all images</string>
+    <string name="download_all_confirm_format">Download %d images to Downloads folder?</string>
+    <string name="download_all_queued_format">Queued %d images for download</string>
+    <string name="download_all_no_images">No downloadable images in this thread</string>
+
     <string name="context_menu_move">Move</string>
     <string name="context_menu_copy_url">Copy the link</string>
     <string name="context_menu_add_favorites">Add to favorites</string>
