@@ -50,7 +50,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     <style name="Theme_Light_Base" parent="@style/Theme_Light_Switch">
         <item name="android:windowBackground">?attr/activityRootBackground</item>
-        <item name="iconDrawer">@drawable/ic_drawer_light</item>
         <item name="dialogBackgroundShadow">@drawable/dialog_full_holo_light</item>
         <item name="iconItemPrevious">@drawable/ic_action_previous</item>
         <item name="iconItemNext">@drawable/ic_action_next</item>
@@ -70,7 +69,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     <style name="Theme_Dark_Base" parent="@style/Theme_Dark_Switch">
         <item name="android:windowBackground">?attr/activityRootBackground</item>
-        <item name="iconDrawer">@drawable/ic_drawer_dark</item>
         <item name="dialogBackgroundShadow">@drawable/dialog_full_holo_dark</item>
         <item name="iconItemPrevious">@drawable/ic_action_previous</item>
         <item name="iconItemNext">@drawable/ic_action_next</item>
