@@ -17,14 +17,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
     <PreferenceScreen
         android:key="@string/pref_key_cat_chans"
-        android:title="@string/pref_cat_chans" />
+        android:title="@string/pref_cat_chans"
+        android:summary="@string/pref_cat_chans_summary" />
 
-    <PreferenceCategory
+    <PreferenceScreen
         android:key="@string/pref_key_cat_appearance"
-        android:title="@string/pref_cat_appearance" >
+        android:title="@string/pref_cat_appearance"
+        android:summary="@string/pref_cat_appearance_summary">
+
         <dev.esoc.esochan.ui.settings.ThemePreference
             android:key="@string/pref_key_theme"
             android:title="@string/pref_theme_title"
@@ -102,12 +106,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:title="@string/pref_sidepanel_right_title"
             android:summary="@string/pref_sidepanel_right_summary"
             android:dependency="@string/pref_key_sidepanel_hide" />
-    </PreferenceCategory>
+    </PreferenceScreen>
 
     <PreferenceScreen
         android:key="@string/pref_key_gallery_screen"
         android:title="@string/pref_gallery_screen_title"
-        android:summary="@string/pref_gallery_screen_summary" >
+        android:summary="@string/pref_gallery_screen_summary">
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_gallery_fullscreen"
@@ -158,7 +163,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:summary="@string/pref_gallery_nativegif_summary" />
     </PreferenceScreen>
 
-    <PreferenceCategory android:title="@string/pref_cat_personal" >
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_personal"
+        android:title="@string/pref_cat_personal"
+        android:summary="@string/pref_cat_personal_summary">
+
         <EditTextPreference
             android:key="@string/pref_key_name"
             android:title="@string/pref_name_title"
@@ -182,9 +191,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:key="@string/pref_key_hide_personal"
             android:title="@string/pref_hide_personal_title"
             android:summary="@string/pref_hide_personal_summary" />
-    </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/pref_cat_downloads" >
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_pin_markup"
+            android:title="@string/pref_pin_markup_title"
+            android:summary="@string/pref_pin_markup_summary" />
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_downloads"
+        android:title="@string/pref_cat_downloads"
+        android:summary="@string/pref_cat_downloads_summary">
+
         <EditTextPreference
             android:defaultValue=""
             android:key="@string/pref_key_download_dir"
@@ -227,9 +246,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <Preference
             android:key="@string/pref_key_clear_cache"
             android:title="@string/pref_clear_cache_title" />
-    </PreferenceCategory>
+    </PreferenceScreen>
 
-    <PreferenceCategory android:title="@string/pref_cat_privacy" >
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_privacy"
+        android:title="@string/pref_cat_privacy"
+        android:summary="@string/pref_cat_privacy_summary">
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_show_nsfw_boards"
@@ -258,9 +281,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:key="@string/pref_key_external_links_confirmation"
             android:title="@string/pref_external_links_confirmation_title"
             android:summary="@string/pref_external_links_confirmation_summary" />
-    </PreferenceCategory>
+    </PreferenceScreen>
 
-    <PreferenceCategory android:title="@string/pref_cat_updates" >
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_autoupdate"
+        android:title="@string/pref_cat_autoupdate"
+        android:summary="@string/pref_cat_autoupdate_summary">
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_enable_autoupdate"
@@ -297,6 +324,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:title="@string/pref_autoupdate_notification_title"
             android:summary="@string/pref_autoupdate_notification_summary"
             android:dependency="@string/pref_key_enable_autoupdate" />
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_subscriptions"
+        android:title="@string/pref_cat_subscriptions"
+        android:summary="@string/pref_cat_subscriptions_summary">
 
         <CheckBoxPreference
             android:defaultValue="true"
@@ -326,11 +359,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <Preference
             android:key="@string/pref_key_clear_subscriptions"
             android:title="@string/pref_clear_subscriptions_title" />
-    </PreferenceCategory>
+    </PreferenceScreen>
 
-    <PreferenceCategory
+    <PreferenceScreen
         android:key="@string/pref_key_cat_advanced"
-        android:title="@string/pref_cat_advanced" >
+        android:title="@string/pref_cat_advanced"
+        android:summary="@string/pref_cat_advanced_summary">
+
         <Preference
             android:key="@string/pref_key_ssl_certificates"
             android:title="@string/pref_ssl_certificates_title"
@@ -344,12 +379,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
         <CheckBoxPreference
             android:defaultValue="false"
-            android:key="@string/pref_key_show_all_chans_list"
-            android:title="@string/pref_show_all_chans_list_title"
-            android:summary="@string/pref_show_all_chans_list_summary" />
-
-        <CheckBoxPreference
-            android:defaultValue="false"
             android:key="@string/pref_key_do_not_close_tabs"
             android:title="@string/pref_do_not_close_tabs_title"
             android:summary="@string/pref_do_not_close_tabs_summary" />
@@ -359,15 +388,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:key="@string/pref_key_scroll_volume_buttons"
             android:title="@string/pref_scroll_volume_buttons_title"
             android:summary="@string/pref_scroll_volume_buttons_summary" />
+    </PreferenceScreen>
 
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_pin_markup"
-            android:title="@string/pref_pin_markup_title"
-            android:summary="@string/pref_pin_markup_summary" />
-    </PreferenceCategory>
+    <PreferenceScreen
+        android:key="@string/pref_key_cat_about"
+        android:title="@string/pref_cat_about"
+        android:summary="@string/pref_cat_about_summary">
 
-    <PreferenceCategory android:title="@string/pref_cat_about">
         <Preference
             android:key="@string/pref_key_about_version"
             android:title="@string/pref_about_version_title" />
@@ -376,6 +403,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:key="@string/pref_key_about_license"
             android:title="@string/pref_about_license_title"
             android:summary="@string/pref_about_license_summary" />
-    </PreferenceCategory>
+    </PreferenceScreen>
 
 </PreferenceScreen>

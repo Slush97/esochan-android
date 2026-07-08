@@ -457,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
         initDrawer();
         
         View[] sidebarButtons =
-            new View[] { findViewById(R.id.sidebar_btn_newtab), findViewById(R.id.sidebar_btn_home), findViewById(R.id.sidebar_btn_favorites) };
+            new View[] { findViewById(R.id.sidebar_btn_home), findViewById(R.id.sidebar_btn_favorites) };
         hiddenTabsSection = new HiddenTabsSection(sidebarButtons);
         
         DragSortListView list = (DragSortListView)findViewById(R.id.sidebar_tabs_list);
@@ -687,25 +687,13 @@ public class MainActivity extends AppCompatActivity {
         closeDrawer();
     }
 
-    /** Always open 4chan index as a new tab. */
-    private void openNewTab() {
-        UrlPageModel model = fourchanIndexPage();
-        if (model == null) return;
-        UrlHandler.openNew(model, this);
-        closeDrawer();
-    }
-
     class HiddenTabsSection implements View.OnClickListener {
-        private View btnNewTab;
         private View btnHome;
         private View btnFavorites;
         public HiddenTabsSection(View[] views) {
             for (View view : views) {
                 view.setOnClickListener(this);
                 switch (view.getId()) {
-                    case R.id.sidebar_btn_newtab:
-                        btnNewTab = view;
-                        break;
                     case R.id.sidebar_btn_favorites:
                         btnFavorites = view;
                         break;
@@ -717,7 +705,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void updateViewSelection(int selectedPosition) {
-            setSelectedBackground(btnNewTab, false);
             setSelectedBackground(btnHome, false);
             setSelectedBackground(btnFavorites, selectedPosition == TabModel.POSITION_FAVORITES);
         }
@@ -727,10 +714,6 @@ public class MainActivity extends AppCompatActivity {
             tabsAdapter.setDraggingItem(-1);
             if (v.getId() == R.id.sidebar_btn_home) {
                 openHomePage();
-                return;
-            }
-            if (v.getId() == R.id.sidebar_btn_newtab) {
-                openNewTab();
                 return;
             }
             int position = TabModel.POSITION_FAVORITES;

@@ -47,7 +47,6 @@ import androidx.core.content.res.ResourcesCompat;
 
 import android.text.Html;
 import android.text.InputType;
-import android.webkit.WebView;
 import android.widget.Toast;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.CloudflareChanModule;
@@ -79,6 +78,10 @@ public class FourchanModule extends CloudflareChanModule {
     private static final String PREF_KEY_PASS_TOKEN = "PREF_KEY_PASS_TOKEN";
     private static final String PREF_KEY_PASS_PIN = "PREF_KEY_PASS_PIN";
     private static final String PREF_KEY_PASS_COOKIE = "PREF_KEY_PASS_COOKIE";
+
+    /** Official auth posts to both domains so pass cookies work on NSFW and SFW hosts. */
+    private static final String[] AUTH_HOSTS = { "sys.4chan.org", "sys.4channel.org" };
+    private static final String[] PASS_COOKIE_DOMAINS = { ".4chan.org", ".4channel.org" };
     
     private boolean usingPasscode = false;
 
@@ -86,6 +89,8 @@ public class FourchanModule extends CloudflareChanModule {
     
     private static final Pattern ERROR_POSTING = Pattern.compile("<span id=\"errmsg\"(?:[^>]*)>(.*?)(?:</span>|<br)");
     private static final Pattern SUCCESS_POSTING = Pattern.compile("<!-- thread:(\\d+),no:(\\d+) -->");
+    private static final Pattern AUTH_HTML_ERROR = Pattern.compile(
+            "(?:class=\"msg-error\"[^>]*>|<strong style=\"color: red; font-size: larger;\">)(.*?)</");
     
     public FourchanModule(SharedPreferences preferences, Resources resources) {
         super(preferences, resources);
@@ -122,29 +127,49 @@ public class FourchanModule extends CloudflareChanModule {
         return "****" + value.substring(value.length() - 4);
     }
 
+    private String getPassToken() {
+        return SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN));
+    }
+
+    private String getPassPin() {
+        return SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN));
+    }
+
+    private String passStatusSummary() {
+        return usingPasscode ? "Logged in — captcha skipped when posting" : "Not logged in";
+    }
+
     private void addPasscodePreference(PreferenceGroup preferenceGroup) {
         final Context context = preferenceGroup.getContext();
-        PreferenceScreen passScreen = preferenceGroup.getPreferenceManager().createPreferenceScreen(context);
-        passScreen.setTitle("4chan pass");
+        final PreferenceScreen passScreen = preferenceGroup.getPreferenceManager().createPreferenceScreen(context);
+        passScreen.setTitle("4chan Pass");
+        passScreen.setSummary(passStatusSummary());
         passScreen.setKey(getSharedKey("PREF_KEY_PASS_SCREEN"));
+
+        final Preference statusPreference = new Preference(context);
+        statusPreference.setKey(getSharedKey("PREF_KEY_PASS_STATUS"));
+        statusPreference.setTitle("Status");
+        statusPreference.setSummary(passStatusSummary());
+        statusPreference.setSelectable(false);
+
         Preference passTokenPreference = new Preference(context);
         passTokenPreference.setTitle("Token");
-        passTokenPreference.setSummary(maskCredential(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN))));
+        passTokenPreference.setSummary(maskCredential(getPassToken()));
         passTokenPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
                 final android.widget.EditText input = new android.widget.EditText(context);
                 input.setSingleLine();
                 input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                input.setText(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN)));
+                input.setText(getPassToken());
                 new AlertDialog.Builder(context)
                     .setTitle("Token")
                     .setView(input)
                     .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_TOKEN), input.getText().toString());
-                            preference.setSummary(maskCredential(input.getText().toString()));
+                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_TOKEN), input.getText().toString().trim());
+                            preference.setSummary(maskCredential(input.getText().toString().trim()));
                         }
                     })
                     .setNegativeButton(android.R.string.cancel, null)
@@ -154,22 +179,22 @@ public class FourchanModule extends CloudflareChanModule {
         });
         Preference passPINPreference = new Preference(context);
         passPINPreference.setTitle("PIN");
-        passPINPreference.setSummary(maskCredential(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN))));
+        passPINPreference.setSummary(maskCredential(getPassPin()));
         passPINPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
                 final android.widget.EditText input = new android.widget.EditText(context);
                 input.setSingleLine();
-                input.setInputType(InputType.TYPE_CLASS_NUMBER);
-                input.setText(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN)));
+                input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+                input.setText(getPassPin());
                 new AlertDialog.Builder(context)
                     .setTitle("PIN")
                     .setView(input)
                     .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_PIN), input.getText().toString());
-                            preference.setSummary(maskCredential(input.getText().toString()));
+                            SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_PIN), input.getText().toString().trim());
+                            preference.setSummary(maskCredential(input.getText().toString().trim()));
                         }
                     })
                     .setNegativeButton(android.R.string.cancel, null)
@@ -178,18 +203,20 @@ public class FourchanModule extends CloudflareChanModule {
             }
         });
         Preference passLoginPreference = new Preference(context);
-        Preference passClearPreference = new Preference(context);
-        passLoginPreference.setTitle("Log In");
+        passLoginPreference.setTitle("Log in");
+        passLoginPreference.setSummary("Authenticate this device with Token + PIN");
         passLoginPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
-                if (!useHttps()) Toast.makeText(context, "Using HTTPS even if HTTP is selected", Toast.LENGTH_SHORT).show();
-                final String token = SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN));
-                final String pin = SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN));
-                final String authUrl = "https://sys.4chan.org/auth"; //only https
+                final String token = getPassToken();
+                final String pin = getPassPin();
+                if (token.isEmpty() || pin.isEmpty()) {
+                    Toast.makeText(context, "Enter Token and PIN first", Toast.LENGTH_LONG).show();
+                    return true;
+                }
                 final CancellableTask passAuthTask = new CancellableTask.BaseCancellableTask();
                 final androidx.appcompat.app.AlertDialog passAuthProgressDialog = SettingsProgress.show(context,
-                        "Logging in",
+                        "Logging in…",
                         new DialogInterface.OnCancelListener() {
                             @Override
                             public void onCancel(DialogInterface dialog) {
@@ -199,80 +226,26 @@ public class FourchanModule extends CloudflareChanModule {
                 Async.runAsync(new Runnable() {
                     @Override
                     public void run() {
+                        String error = null;
                         try {
                             if (passAuthTask.isCancelled()) return;
-                            setPasscodeCookie(null, true);
-                            okhttp3.FormBody.Builder formBuilder = new okhttp3.FormBody.Builder();
-                            formBuilder.add("act", "do_login");
-                            formBuilder.add("id", token);
-                            formBuilder.add("pin", pin);
-                            HttpRequestModel request = HttpRequestModel.builder().setPOST(formBuilder.build())
-                                    .setCustomHeaders(getAuthHeaders()).build();
-                            String response = HttpStreamer.getInstance().getStringFromUrl(authUrl, request, httpClient, null, passAuthTask, false);
-                            if (passAuthTask.isCancelled()) return;
-                            if (response.contains("Your device is now authorized")) {
-                                String passId = null;
-                                for (HttpCookie cookie : httpClient.getCookieStore().getCookies()) {
-                                    if (cookie.getName().equals("pass_id")) {
-                                        String value = cookie.getValue();
-                                        if (!value.equals("0")) {
-                                            passId = value;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (passId == null) {
-                                    showToast("Could not get pass id");
-                                } else {
-                                    setPasscodeCookie(passId, true);
-                                    showToast("Success! Your device is now authorized.");
-                                }
-                            } else if (response.contains("Your Token must be exactly 10 characters")) {
-                                showToast("Incorrect token");
-                            } else if (response.contains("You have left one or more fields blank")) {
-                                showToast("You have left one or more fields blank");
-                            } else if (response.contains("Incorrect Token or PIN")) {
-                                showToast("Incorrect Token or PIN");
-                            } else {
-                                Matcher m = Pattern.compile("<strong style=\"color: red; font-size: larger;\">(.*?)</strong>").matcher(response);
-                                if (m.find()) {
-                                    showToast(m.group(1));
-                                } else {
-                                    showWebView(response);
-                                }
-                            }
+                            error = loginPass(token, pin, passAuthTask);
                         } catch (Exception e) {
-                            showToast(e.getMessage() == null ? resources.getString(R.string.error_unknown) : e.getMessage());
-                        } finally {
-                            if (context instanceof Activity) {
-                                ((Activity) context).runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        passAuthProgressDialog.dismiss();
+                            error = e.getMessage() == null ? resources.getString(R.string.error_unknown) : e.getMessage();
+                        }
+                        final String resultError = error;
+                        if (context instanceof Activity) {
+                            ((Activity) context).runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    passAuthProgressDialog.dismiss();
+                                    statusPreference.setSummary(passStatusSummary());
+                                    passScreen.setSummary(passStatusSummary());
+                                    if (resultError == null) {
+                                        Toast.makeText(context, "Logged in — captcha skipped when posting", Toast.LENGTH_LONG).show();
+                                    } else {
+                                        Toast.makeText(context, resultError, Toast.LENGTH_LONG).show();
                                     }
-                                });
-                            }
-                        }
-                    }
-                    private void showToast(final String message) {
-                        if (context instanceof Activity) {
-                            ((Activity) context).runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show();
-                                }
-                            });
-                        }
-                    }
-                    private void showWebView(final String html) {
-                        if (context instanceof Activity) {
-                            ((Activity) context).runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    WebView webView = new WebView(context);
-                                    webView.getSettings().setSupportZoom(true);
-                                    webView.loadData(html, "text/html", null);
-                                    new AlertDialog.Builder(context).setView(webView).setNeutralButton(android.R.string.ok, null).show();
                                 }
                             });
                         }
@@ -281,20 +254,205 @@ public class FourchanModule extends CloudflareChanModule {
                 return true;
             }
         });
-        passClearPreference.setTitle("Reset pass cookie");
-        passClearPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        Preference passLogoutPreference = new Preference(context);
+        passLogoutPreference.setTitle("Log out");
+        passLogoutPreference.setSummary("Clear pass session on this device (keeps Token/PIN)");
+        passLogoutPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
-                setPasscodeCookie(null, true);
-                Toast.makeText(context, "Cookie is reset", Toast.LENGTH_LONG).show();
+                final CancellableTask logoutTask = new CancellableTask.BaseCancellableTask();
+                final androidx.appcompat.app.AlertDialog progress = SettingsProgress.show(context,
+                        "Logging out…",
+                        new DialogInterface.OnCancelListener() {
+                            @Override
+                            public void onCancel(DialogInterface dialog) {
+                                logoutTask.cancel();
+                            }
+                        });
+                Async.runAsync(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            logoutPass(logoutTask);
+                        } catch (Exception ignored) {
+                            setPasscodeCookie(null, true);
+                        }
+                        if (context instanceof Activity) {
+                            ((Activity) context).runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    progress.dismiss();
+                                    statusPreference.setSummary(passStatusSummary());
+                                    passScreen.setSummary(passStatusSummary());
+                                    Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                });
                 return true;
             }
         });
+        passScreen.addPreference(statusPreference);
         passScreen.addPreference(passTokenPreference);
         passScreen.addPreference(passPINPreference);
         passScreen.addPreference(passLoginPreference);
-        passScreen.addPreference(passClearPreference);
+        passScreen.addPreference(passLogoutPreference);
         preferenceGroup.addPreference(passScreen);
+    }
+
+    /**
+     * Authenticate against both 4chan hosts (official client behaviour).
+     * @return null on success, user-facing error message on failure
+     */
+    private String loginPass(String token, String pin, CancellableTask task) throws Exception {
+        if (token == null || token.isEmpty() || pin == null || pin.isEmpty()) {
+            return "You have left one or more fields blank";
+        }
+        token = token.trim();
+        pin = pin.trim();
+        setPasscodeCookie(null, true);
+
+        String credentialError = null;
+        String networkError = null;
+        String passId = null;
+
+        for (String host : AUTH_HOSTS) {
+            if (task != null && task.isCancelled()) return "Cancelled";
+            String authUrl = "https://" + host + "/auth";
+            okhttp3.FormBody body = new okhttp3.FormBody.Builder()
+                    .add("xhr", "1")
+                    .add("id", token)
+                    .add("pin", pin)
+                    .add("long_login", "1")
+                    .build();
+            HttpRequestModel request = HttpRequestModel.builder()
+                    .setPOST(body)
+                    .setCustomHeaders(getAuthHeaders(host))
+                    .build();
+            String response;
+            try {
+                response = HttpStreamer.getInstance().getStringFromUrl(authUrl, request, httpClient, null, task, false);
+            } catch (Exception e) {
+                networkError = e.getMessage() == null ? resources.getString(R.string.error_unknown) : e.getMessage();
+                continue;
+            }
+            if (task != null && task.isCancelled()) return "Cancelled";
+            if (response == null || response.isEmpty()) {
+                networkError = "Empty auth response from " + host;
+                continue;
+            }
+
+            AuthResult result = parseAuthResponse(response);
+            if (result.credentialError != null) {
+                // Bad credentials fail the same on both hosts — stop early.
+                if (passId == null) credentialError = result.credentialError;
+                break;
+            }
+            if (result.success) {
+                String fromResponse = extractPassIdFromCookieStore();
+                if (fromResponse != null) passId = fromResponse;
+            } else if (result.message != null && passId == null) {
+                networkError = result.message;
+            }
+        }
+
+        if (passId == null) {
+            passId = extractPassIdFromCookieStore();
+        }
+        if (passId != null) {
+            setPasscodeCookie(passId, true);
+            return null;
+        }
+        if (credentialError != null) return credentialError;
+        if (networkError != null) return networkError;
+        return "Could not get pass id";
+    }
+
+    private void logoutPass(CancellableTask task) {
+        for (String host : AUTH_HOSTS) {
+            if (task != null && task.isCancelled()) break;
+            try {
+                okhttp3.FormBody body = new okhttp3.FormBody.Builder()
+                        .add("xhr", "1")
+                        .add("logout", "1")
+                        .build();
+                HttpRequestModel request = HttpRequestModel.builder()
+                        .setPOST(body)
+                        .setCustomHeaders(getAuthHeaders(host))
+                        .build();
+                HttpStreamer.getInstance().getStringFromUrl(
+                        "https://" + host + "/auth", request, httpClient, null, task, false);
+            } catch (Exception ignored) {
+            }
+        }
+        setPasscodeCookie(null, true);
+    }
+
+    private static final class AuthResult {
+        boolean success;
+        String credentialError;
+        String message;
+    }
+
+    private AuthResult parseAuthResponse(String response) {
+        AuthResult result = new AuthResult();
+        String trimmed = response.trim();
+        if (trimmed.startsWith("{")) {
+            try {
+                JSONObject json = new JSONObject(trimmed);
+                int status = json.optInt("status", -1);
+                String message = json.optString("message", "");
+                if (status == -1) {
+                    result.credentialError = message.isEmpty() ? "Authentication failed" : stripHtml(message);
+                    return result;
+                }
+                result.success = true;
+                return result;
+            } catch (Exception e) {
+                // fall through to HTML
+            }
+        }
+        if (response.contains("Your device is now authorized") || response.contains("Success! Your device is now authorized")) {
+            result.success = true;
+            return result;
+        }
+        if (response.contains("Your Token must be exactly 10 characters")) {
+            result.credentialError = "Incorrect token";
+            return result;
+        }
+        if (response.contains("You have left one or more fields blank")) {
+            result.credentialError = "You have left one or more fields blank";
+            return result;
+        }
+        if (response.contains("Incorrect Token or PIN")) {
+            result.credentialError = "Incorrect Token or PIN";
+            return result;
+        }
+        Matcher m = AUTH_HTML_ERROR.matcher(response);
+        if (m.find()) {
+            result.credentialError = stripHtml(m.group(1));
+            return result;
+        }
+        result.message = "Unexpected auth response";
+        return result;
+    }
+
+    private static String stripHtml(String html) {
+        if (html == null) return "";
+        return Html.fromHtml(html).toString().trim();
+    }
+
+    private String extractPassIdFromCookieStore() {
+        for (HttpCookie cookie : httpClient.getCookieStore().getCookies()) {
+            if ("pass_id".equals(cookie.getName())) {
+                String value = cookie.getValue();
+                if (value != null && value.length() > 0 && !"0".equals(value)) {
+                    return value;
+                }
+            }
+        }
+        return null;
     }
     
     private void setPasscodeCookie(String cookie, boolean saveToPreferences) {
@@ -302,25 +460,51 @@ public class FourchanModule extends CloudflareChanModule {
         if (saveToPreferences) SecurePreferences.INSTANCE.put(getSharedKey(PREF_KEY_PASS_COOKIE), cookie);
         if (cookie.length() > 0) {
             usingPasscode = true;
-            HttpCookie c1 = new HttpCookie("pass_id", cookie);
-            c1.setDomain(".4chan.org");
-            c1.setPath("/");
-            httpClient.getCookieStore().addCookie(c1);
-            HttpCookie c2 = new HttpCookie("pass_enabled", "1");
-            c2.setDomain(".4chan.org");
-            c2.setPath("/");
-            httpClient.getCookieStore().addCookie(c2);
+            for (String domain : PASS_COOKIE_DOMAINS) {
+                HttpCookie passId = new HttpCookie("pass_id", cookie);
+                passId.setDomain(domain);
+                passId.setPath("/");
+                httpClient.getCookieStore().addCookie(passId);
+                HttpCookie passEnabled = new HttpCookie("pass_enabled", "1");
+                passEnabled.setDomain(domain);
+                passEnabled.setPath("/");
+                httpClient.getCookieStore().addCookie(passEnabled);
+            }
         } else {
             usingPasscode = false;
-            HttpCookie c = new HttpCookie("pass_id", "0");
-            c.setDomain(".4chan.org");
-            c.setPath("/");
-            httpClient.getCookieStore().addCookie(c);
-            HttpCookie c2 = new HttpCookie("pass_enabled", "0");
-            c2.setDomain(".4chan.org");
-            c2.setPath("/");
-            httpClient.getCookieStore().addCookie(c2);
+            for (String domain : PASS_COOKIE_DOMAINS) {
+                HttpCookie passId = new HttpCookie("pass_id", "0");
+                passId.setDomain(domain);
+                passId.setPath("/");
+                httpClient.getCookieStore().addCookie(passId);
+                HttpCookie passEnabled = new HttpCookie("pass_enabled", "0");
+                passEnabled.setDomain(domain);
+                passEnabled.setPath("/");
+                httpClient.getCookieStore().addCookie(passEnabled);
+            }
         }
+    }
+
+    /** Re-auth if we have credentials stored but no active pass session. */
+    private void ensurePassSession(CancellableTask task) {
+        if (usingPasscode) return;
+        String token = getPassToken();
+        String pin = getPassPin();
+        if (token.isEmpty() || pin.isEmpty()) return;
+        try {
+            loginPass(token, pin, task);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean isPassSessionError(String message) {
+        if (message == null) return false;
+        String m = message.toLowerCase(Locale.US);
+        return m.contains("captcha")
+                || m.contains("pass")
+                || m.contains("authenticated")
+                || m.contains("authorized")
+                || m.contains("not logged in");
     }
     
     @Override
@@ -339,11 +523,12 @@ public class FourchanModule extends CloudflareChanModule {
         };
     }
 
-    private HttpHeader[] getAuthHeaders() {
+    private HttpHeader[] getAuthHeaders(String host) {
+        String origin = "https://" + host;
         return new HttpHeader[] {
-            new HttpHeader("Origin", "https://sys.4chan.org"),
-            new HttpHeader("Referer", "https://sys.4chan.org/auth"),
-            new HttpHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            new HttpHeader("Origin", origin),
+            new HttpHeader("Referer", origin + "/auth"),
+            new HttpHeader("Accept", "application/json, text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         };
     }
 
@@ -461,6 +646,7 @@ public class FourchanModule extends CloudflareChanModule {
     
     @Override
     public CaptchaModel getNewCaptcha(String boardName, String threadNumber, ProgressListener listener, CancellableTask task) throws Exception {
+        ensurePassSession(task);
         if (usingPasscode) return null;
         if (Chan4CaptchaSolved.hasSolved()) return null;
         throw new Chan4Captcha(boardName, threadNumber);
@@ -468,10 +654,28 @@ public class FourchanModule extends CloudflareChanModule {
     
     @Override
     public String sendPost(SendPostModel model, ProgressListener listener, CancellableTask task) throws Exception {
+        ensurePassSession(task);
         String[] captchaPair = usingPasscode ? null : Chan4CaptchaSolved.pop();
         if (!usingPasscode && captchaPair == null) {
             throw new Chan4Captcha(model.boardName, model.threadNumber);
         }
+        try {
+            return doSendPost(model, captchaPair, listener, task);
+        } catch (Exception e) {
+            if (usingPasscode && isPassSessionError(e.getMessage())
+                    && !getPassToken().isEmpty() && !getPassPin().isEmpty()) {
+                setPasscodeCookie(null, true);
+                String reauth = loginPass(getPassToken(), getPassPin(), task);
+                if (reauth == null) {
+                    return doSendPost(model, null, listener, task);
+                }
+            }
+            throw e;
+        }
+    }
+
+    private String doSendPost(SendPostModel model, String[] captchaPair, ProgressListener listener, CancellableTask task)
+            throws Exception {
         String url = "https://sys.4chan.org/" + model.boardName + "/post";
         ExtendedMultipartBuilder postEntityBuilder = ExtendedMultipartBuilder.create().setDelegates(listener, task).
                 addString("name", model.name).
@@ -534,17 +738,23 @@ public class FourchanModule extends CloudflareChanModule {
     
     @Override
     public String reportPost(final DeletePostModel model, ProgressListener listener, final CancellableTask task) throws Exception {
-        String[] captchaPair = Chan4CaptchaSolved.pop();
-        if (captchaPair == null) {
-            throw new Chan4Captcha(model.boardName, null);
+        ensurePassSession(task);
+        String[] captchaPair = null;
+        if (!usingPasscode) {
+            captchaPair = Chan4CaptchaSolved.pop();
+            if (captchaPair == null) {
+                throw new Chan4Captcha(model.boardName, null);
+            }
         }
         String url = "https://sys.4chan.org/" + model.boardName + "/imgboard.php?mode=report&no=" + model.postNumber;
         ExtendedMultipartBuilder postEntityBuilder = ExtendedMultipartBuilder.create().setDelegates(listener, task).
                 addString("cat", "vio").
-                addString("t-challenge", captchaPair[0]).
-                addString("t-response", captchaPair[1]).
                 addString("board", model.boardName).
                 addString("no", model.postNumber);
+        if (captchaPair != null) {
+            postEntityBuilder.addString("t-challenge", captchaPair[0]);
+            postEntityBuilder.addString("t-response", captchaPair[1]);
+        }
         HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build())
                 .setCustomHeaders(getPostHeaders(model.boardName, "https://boards.4chan.org")).build();
         String response = HttpStreamer.getInstance().getStringFromUrl(url, request, httpClient, listener, task, false);

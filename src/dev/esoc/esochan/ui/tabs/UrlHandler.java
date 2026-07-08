@@ -48,7 +48,7 @@ public class UrlHandler {
     public static void open(final String url, final MainActivity activity, boolean useFakeBrowserIfUrlNotHandled) {
         TabModel model = getTabModel(getPageModel(url), activity.getResources());
         if (model != null) {
-            open(model, activity, true, false);
+            open(model, activity, true);
             return;
         }
         if (useFakeBrowserIfUrlNotHandled) {
@@ -89,31 +89,22 @@ public class UrlHandler {
     public static void open(UrlPageModel urlPageModel, MainActivity activity, boolean switchAfter, String tabTitle) {
         TabModel model = getTabModel(urlPageModel, activity.getResources());
         if (tabTitle != null) model.title = tabTitle;
-        open(model, activity, switchAfter, false);
+        open(model, activity, switchAfter);
     }
 
-    /** Always create a new tab, even if an identical page is already open. */
-    public static void openNew(UrlPageModel urlPageModel, MainActivity activity) {
-        TabModel model = getTabModel(urlPageModel, activity.getResources());
-        if (model == null) return;
-        open(model, activity, true, true);
-    }
-    
-    private static void open(TabModel model, MainActivity activity, boolean switchAfter, boolean forceNew) {
+    private static void open(TabModel model, MainActivity activity, boolean switchAfter) {
         if (model == null) return;
         TabsAdapter tabsAdapter = activity.tabsAdapter;
-        if (!forceNew) {
-            for (int i=0; i<tabsAdapter.getCount(); ++i) {
-                if (tabsAdapter.getItem(i).hash != null && tabsAdapter.getItem(i).hash.equals(model.hash)) {
-                    tabsAdapter.getItem(i).startItemNumber = model.startItemNumber;
-                    tabsAdapter.getItem(i).startItemTop = 0;
-                    tabsAdapter.getItem(i).forceUpdate = true;
-                    if (switchAfter) tabsAdapter.setSelectedItem(i);
-                    return;
-                }
+        for (int i=0; i<tabsAdapter.getCount(); ++i) {
+            if (tabsAdapter.getItem(i).hash != null && tabsAdapter.getItem(i).hash.equals(model.hash)) {
+                tabsAdapter.getItem(i).startItemNumber = model.startItemNumber;
+                tabsAdapter.getItem(i).startItemTop = 0;
+                tabsAdapter.getItem(i).forceUpdate = true;
+                if (switchAfter) tabsAdapter.setSelectedItem(i);
+                return;
             }
         }
-        
+
         int selected = tabsAdapter.getSelectedItem();
         if (selected >= 0 && selected < tabsAdapter.getCount()) {
             tabsAdapter.insert(model, selected + 1, !switchAfter);

@@ -22,7 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     <string name="pref_key_cat_chans">PREF_KEY_CAT_CHANS</string>
     <string name="pref_key_cat_appearance">PREF_KEY_CAT_APPEARANCE</string>
+    <string name="pref_key_cat_personal">PREF_KEY_CAT_PERSONAL</string>
+    <string name="pref_key_cat_downloads">PREF_KEY_CAT_DOWNLOADS</string>
+    <string name="pref_key_cat_privacy">PREF_KEY_CAT_PRIVACY</string>
+    <string name="pref_key_cat_autoupdate">PREF_KEY_CAT_AUTOUPDATE</string>
+    <string name="pref_key_cat_subscriptions">PREF_KEY_CAT_SUBSCRIPTIONS</string>
     <string name="pref_key_cat_advanced">PREF_KEY_CAT_ADVANCED</string>
+    <string name="pref_key_cat_about">PREF_KEY_CAT_ABOUT</string>
     <string name="pref_key_download_thread_mode">PREF_KEY_DOWNLOAD_THREAD_MODE</string>
     <string name="pref_key_last_favorites_page">PREF_KEY_LAST_FAVORITES_PAGE</string>
     <string name="pref_key_name">PREF_KEY_NAME</string>

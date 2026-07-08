@@ -30,20 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         android:layout_width="match_parent"
         android:layout_height="@dimen/tab_height" 
         android:orientation="horizontal"
-        android:weightSum="3" >
-        <ImageView
-            style="@style/SelectableItem"
-            android:id="@+id/sidebar_btn_newtab"
-            android:layout_height="match_parent"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:src="?attr/sidebarBtnNewTab"
-            app:tint="?attr/iconTint"
-            android:scaleType="center"
-            android:focusable="true"
-            android:nextFocusDown="@+id/sidebar_tabs_list"
-            android:nextFocusRight="@+id/sidebar_btn_home"
-            android:contentDescription="@string/tabs_newtab" />
+        android:weightSum="2" >
         <ImageView
             style="@style/SelectableItem"
             android:id="@+id/sidebar_btn_home"
@@ -54,9 +41,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             app:tint="?attr/iconTint"
             android:scaleType="center"
             android:focusable="true"
-            android:nextFocusLeft="@id/sidebar_btn_newtab"
             android:nextFocusRight="@+id/sidebar_btn_favorites"
-            android:nextFocusDown="@id/sidebar_tabs_list"
+            android:nextFocusDown="@+id/sidebar_tabs_list"
             android:contentDescription="@string/sidebar_home" />
         <ImageView
             style="@style/SelectableItem"
@@ -82,6 +68,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         android:id="@+id/sidebar_tabs_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:nextFocusUp="@id/sidebar_btn_newtab" />
+        android:nextFocusUp="@id/sidebar_btn_home" />
 
 </LinearLayout>

@@ -18,13 +18,10 @@
 
 package dev.esoc.esochan.ui.settings;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.InputType;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -39,21 +36,18 @@ import androidx.preference.PreferenceScreen;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.ChanModule;
-import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.common.Async;
-import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.ui.BoardsListFragment;
-
 import dev.esoc.esochan.ui.tabs.TabsTrackerService;
 import dev.esoc.esochan.ui.tabs.UrlHandler;
 
 public class PreferencesFragment extends PreferenceFragmentCompat {
-    private static final String TAG = "PreferencesFragment";
-
     private final ArrayDeque<PreferenceScreen> screenStack = new ArrayDeque<>();
     private SharedPreferences.OnSharedPreferenceChangeListener sharedPreferenceChangeListener;
     private SharedPreferences sharedPreferences;
@@ -240,11 +234,6 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
             }
         };
 
-        if (MainApplication.getInstance().settings.isSFWRelease()) {
-            Preference p = findPreference(getString(R.string.pref_key_show_all_chans_list));
-            ((PreferenceGroup) findPreference(getString(R.string.pref_key_cat_advanced))).removePreference(p);
-        }
-
         if (!MainApplication.getInstance().settings.isRealTablet()) {
             Preference pHide = findPreference(getString(R.string.pref_key_sidepanel_hide));
             Preference pWidth = findPreference(getString(R.string.pref_key_sidepanel_width));
@@ -297,79 +286,41 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
         }
     }
 
-    private void updateChansScreen(final PreferenceScreen chansCat) {
-        if (chansCat == null) return;
+    private void updateChansScreen(final PreferenceScreen chansScreen) {
+        if (chansScreen == null) return;
         PreferencesActivity.needUpdateChansScreen = false;
-        chansCat.removeAll();
-
-        Preference enterUrl = new Preference(requireContext());
-        enterUrl.setTitle(R.string.pref_chans_enter_url);
-        enterUrl.setOnPreferenceClickListener(preference -> {
-            final EditText inputField = new EditText(requireActivity());
-            inputField.setSingleLine();
-            inputField.setHint(R.string.pref_chans_enter_url_hint);
-            inputField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-
-            DialogInterface.OnClickListener dlgOnClick = (dialog, which) -> {
-                String url = inputField.getText().toString();
-                if (url == null || url.length() == 0) return;
-                UrlPageModel model = UrlHandler.getPageModel(url);
-                if (model == null || model.chanName == null) {
-                    Toast.makeText(requireActivity(), R.string.pref_chans_enter_url_incorrect, Toast.LENGTH_LONG).show();
-                } else {
-                    final String key = "chan_preference_screen_" + model.chanName;
-                    Preference target = chansCat.findPreference(key);
-                    if (target != null) {
-                        target.performClick();
-                        return;
-                    }
-                    updateChansScreen(chansCat);
-                    Async.runAsync(() -> {
-                        try {
-                            Thread.sleep(200);
-                            requireActivity().runOnUiThread(() -> {
-                                Preference refreshed = chansCat.findPreference(key);
-                                if (refreshed != null) {
-                                    refreshed.performClick();
-                                }
-                            });
-                        } catch (Exception e) {
-                            Logger.e(TAG, e);
-                        }
-                    });
-                }
-            };
-
-            new MaterialAlertDialogBuilder(requireActivity())
-                    .setTitle(R.string.pref_chans_enter_url)
-                    .setView(inputField)
-                    .setPositiveButton(android.R.string.ok, dlgOnClick)
-                    .show();
-            return true;
-        });
-        chansCat.addPreference(enterUrl);
+        chansScreen.removeAll();
 
         ApplicationSettings settings = MainApplication.getInstance().settings;
-        int visibleChansCount = 0;
+        List<ChanModule> unlocked = new ArrayList<>();
         for (ChanModule chan : MainApplication.getInstance().chanModulesList) {
-            if (!settings.isUnlockedChan(chan.getChanName())) continue;
+            if (settings.isUnlockedChan(chan.getChanName())) {
+                unlocked.add(chan);
+            }
+        }
+
+        if (unlocked.size() == 1) {
+            unlocked.get(0).addPreferencesOnScreen(chansScreen);
+            return;
+        }
+
+        for (ChanModule chan : unlocked) {
             PreferenceScreen curScreen = getPreferenceManager().createPreferenceScreen(requireContext());
             curScreen.setTitle(chan.getDisplayingName());
             curScreen.setKey("chan_preference_screen_" + chan.getChanName());
             curScreen.setIcon(chan.getChanFavicon());
-            chansCat.addPreference(curScreen);
+            chansScreen.addPreference(curScreen);
             chan.addPreferencesOnScreen(curScreen);
-            ++visibleChansCount;
         }
 
-        if (visibleChansCount >= 2) {
+        if (unlocked.size() >= 2) {
             Preference rearrange = new Preference(requireContext());
             rearrange.setTitle(R.string.pref_chans_rearrange);
             rearrange.setOnPreferenceClickListener(preference -> {
                 startActivity(new Intent(requireActivity(), ChansSortActivity.class));
                 return true;
             });
-            chansCat.addPreference(rearrange);
+            chansScreen.addPreference(rearrange);
         }
     }
 }
