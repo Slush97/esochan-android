@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -69,8 +70,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     android:contentDescription="@string/previous"
                     android:padding="4dp"
                     android:scaleType="fitStart"
-                    android:src="?attr/iconItemPrevious" />
-                
+                    android:src="?attr/iconItemPrevious"
+                    app:tint="?attr/iconTint" />
+
                 <ImageView
                     android:id="@+id/gallery_navigation_next"
                     style="@style/SelectableItem"
@@ -80,7 +82,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                     android:contentDescription="@string/next"
                     android:padding="4dp"
                     android:scaleType="fitEnd"
-                    android:src="?attr/iconItemNext" />
+                    android:src="?attr/iconItemNext"
+                    app:tint="?attr/iconTint" />
             </LinearLayout>
             
             <TextView

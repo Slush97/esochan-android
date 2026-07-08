@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
@@ -57,6 +58,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:src="?attr/iconItemPrevious"
+                app:tint="?attr/iconTint"
                 android:scaleType="fitStart"
                 android:padding="4dp"
                 android:contentDescription="@string/previous" />
@@ -67,6 +69,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:src="?attr/iconItemNext"
+                app:tint="?attr/iconTint"
                 android:scaleType="fitEnd"
                 android:padding="4dp"
                 android:contentDescription="@string/next" />

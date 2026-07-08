@@ -124,6 +124,7 @@
             android:padding="8dp"
             android:background="?android:attr/selectableItemBackground"
             android:src="?attr/actionAddAttachment"
+            app:tint="?attr/iconTint"
             android:contentDescription="@string/menu_attach_file" />
 
         <ImageButton
@@ -133,6 +134,7 @@
             android:padding="8dp"
             android:background="?android:attr/selectableItemBackground"
             android:src="?attr/actionAddGallery"
+            app:tint="?attr/iconTint"
             android:contentDescription="@string/menu_attach_gallery" />
 
         <View
