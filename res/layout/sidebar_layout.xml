@@ -39,6 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:layout_weight="1"
             android:src="?attr/sidebarBtnNewTab"
             app:tint="?attr/iconTint"
+            android:scaleType="center"
             android:focusable="true"
             android:nextFocusDown="@+id/sidebar_tabs_list"
             android:nextFocusRight="@+id/sidebar_btn_home"
@@ -51,6 +52,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:layout_weight="1"
             android:src="?attr/sidebarBtnHome"
             app:tint="?attr/iconTint"
+            android:scaleType="center"
             android:focusable="true"
             android:nextFocusLeft="@id/sidebar_btn_newtab"
             android:nextFocusRight="@+id/sidebar_btn_favorites"
@@ -64,17 +66,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:layout_weight="1"
             android:src="?attr/sidebarBtnFavorites"
             app:tint="?attr/iconTint"
+            android:scaleType="center"
             android:focusable="true"
             android:nextFocusLeft="@id/sidebar_btn_home"
             android:nextFocusDown="@id/sidebar_tabs_list"
             android:contentDescription="@string/tabs_favorites" />
     </LinearLayout>
     
-    <ImageView
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?android:attr/listDivider"
-        android:contentDescription="@string/empty" />
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider" />
     
     <dev.esoc.esochan.lib.dslv.DragSortListView
         android:id="@+id/sidebar_tabs_list"

@@ -465,6 +465,7 @@ public class MainActivity extends AppCompatActivity {
         tabsAdapter = initTabsListView(list, state);
         tabsViewModel = new ViewModelProvider(this).get(TabsViewModel.class);
         tabsAdapter.setViewModel(tabsViewModel);
+        tabsAdapter.setSelectedItem(state.position, false);
         handleUriIntent(getIntent());
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 33) {
@@ -669,13 +670,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     
-    private void openHomePage() {
+    private UrlPageModel fourchanIndexPage() {
         ChanModule chan = MainApplication.getInstance().getChanModule("4chan.org");
-        if (chan == null) return;
+        if (chan == null) return null;
         UrlPageModel model = new UrlPageModel();
         model.chanName = chan.getChanName();
         model.type = UrlPageModel.TYPE_INDEXPAGE;
+        return model;
+    }
+
+    /** Switch to the existing 4chan index tab, or open one. */
+    private void openHomePage() {
+        UrlPageModel model = fourchanIndexPage();
+        if (model == null) return;
         UrlHandler.open(model, this);
+        closeDrawer();
+    }
+
+    /** Always open 4chan index as a new tab. */
+    private void openNewTab() {
+        UrlPageModel model = fourchanIndexPage();
+        if (model == null) return;
+        UrlHandler.openNew(model, this);
         closeDrawer();
     }
 
@@ -701,7 +717,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void updateViewSelection(int selectedPosition) {
-            setSelectedBackground(btnNewTab, selectedPosition == TabModel.POSITION_NEWTAB);
+            setSelectedBackground(btnNewTab, false);
             setSelectedBackground(btnHome, false);
             setSelectedBackground(btnFavorites, selectedPosition == TabModel.POSITION_FAVORITES);
         }
@@ -713,7 +729,11 @@ public class MainActivity extends AppCompatActivity {
                 openHomePage();
                 return;
             }
-            int position = v.getId() == R.id.sidebar_btn_favorites ? TabModel.POSITION_FAVORITES : TabModel.POSITION_NEWTAB;
+            if (v.getId() == R.id.sidebar_btn_newtab) {
+                openNewTab();
+                return;
+            }
+            int position = TabModel.POSITION_FAVORITES;
             boolean needSerialize = tabsAdapter.getSelectedItem() != position;
             tabsAdapter.setSelectedItem(position, needSerialize);
             closeDrawer();
@@ -760,6 +780,10 @@ public class MainActivity extends AppCompatActivity {
                         else list.setSelectionFromTop(position, selectionOffset);
                     }
                     MainApplication.getInstance().tabsSwitcher.switchTo(tabsState.tabsArray.get(position), getSupportFragmentManager());
+                } else if (position == TabModel.POSITION_NEWTAB) {
+                    // Cold start / last tab closed: land on 4chan index, not the old multi-chan launcher.
+                    list.clearChoices();
+                    openHomePage();
                 } else {
                     list.clearChoices();
                     MainApplication.getInstance().tabsSwitcher.switchTo(position, getSupportFragmentManager());
@@ -811,7 +835,8 @@ public class MainActivity extends AppCompatActivity {
         list.setFloatViewManager(controller);
         list.setOnTouchListener(controller);
         registerForContextMenu(list);
-        adapter.setSelectedItem(tabsState.position, false);
+        // Selection is applied by onCreate after assigning this.tabsAdapter so
+        // POSITION_NEWTAB → openHomePage can use a non-null adapter.
         return adapter;
     }
     

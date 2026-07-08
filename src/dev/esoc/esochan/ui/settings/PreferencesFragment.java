@@ -47,7 +47,7 @@ import dev.esoc.esochan.common.Async;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.ui.BoardsListFragment;
-import dev.esoc.esochan.ui.NewTabFragment;
+
 import dev.esoc.esochan.ui.tabs.TabsTrackerService;
 import dev.esoc.esochan.ui.tabs.UrlHandler;
 
@@ -235,10 +235,6 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
                 if (getString(R.string.pref_key_show_nsfw_boards).equals(key)) {
                     if (MainApplication.getInstance().tabsSwitcher.currentFragment instanceof BoardsListFragment) {
                         ((BoardsListFragment) MainApplication.getInstance().tabsSwitcher.currentFragment).updateList();
-                    }
-                } else if (getString(R.string.pref_key_show_all_chans_list).equals(key)) {
-                    if (MainApplication.getInstance().tabsSwitcher.currentFragment instanceof NewTabFragment) {
-                        ((NewTabFragment) MainApplication.getInstance().tabsSwitcher.currentFragment).updateList();
                     }
                 }
             }

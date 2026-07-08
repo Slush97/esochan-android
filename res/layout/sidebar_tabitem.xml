@@ -22,24 +22,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minHeight="@dimen/tab_height"
-    android:orientation="horizontal" >
+    android:orientation="horizontal"
+    android:gravity="center_vertical" >
  
     <dev.esoc.esochan.lib.DragGripView
         android:id="@+id/tab_drag_handle" 
         android:layout_gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingStart="@dimen/list_row_padding_horizontal"
+        android:paddingEnd="@dimen/list_row_padding_horizontal"
         android:visibility="visible" />
     
     <ImageView
         android:id="@+id/tab_favicon"
         android:layout_gravity="center_vertical"
-        android:layout_width="40dp"
+        android:layout_width="@dimen/list_row_icon_size"
         android:layout_height="match_parent"
-        android:paddingLeft="4dp"
-        android:paddingRight="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:scaleType="centerInside"
         android:contentDescription="@string/empty" />
  
     <TextView
@@ -50,17 +52,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:textColor="?android:attr/textColorSecondary"
-        android:singleLine="true" />
+        android:maxLines="1"
+        android:ellipsize="end" />
     
     <dev.esoc.esochan.lib.NonParentFocusableImageView
         style="@style/SelectableItem"
         android:id="@+id/tab_close_button"
         android:scaleType="center"
         android:layout_gravity="center_vertical"
-        android:layout_width="wrap_content"
+        android:layout_width="48dp"
         android:layout_height="match_parent"
-        android:paddingLeft="8dp"
-        android:paddingRight="8dp"
+        android:minWidth="48dp"
+        android:paddingStart="@dimen/list_row_padding_horizontal_tight"
+        android:paddingEnd="@dimen/list_row_padding_horizontal_tight"
         android:contentDescription="@string/close"
         android:src="?attr/iconBtnClose"
         app:tint="?attr/iconTint" />

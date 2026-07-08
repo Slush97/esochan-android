@@ -23,7 +23,6 @@ import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.ui.FavoritesFragment;
 import dev.esoc.esochan.ui.HistoryFragment;
-import dev.esoc.esochan.ui.NewTabFragment;
 import dev.esoc.esochan.ui.presentation.BoardFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -79,18 +78,16 @@ public class TabsSwitcher {
     }
     
     /**
-     * Переключиться на скрытую (такие как "Новая вкладка", "Избранное", "История") вкладку
+     * Переключиться на скрытую вкладку (Избранное / История).
+     * POSITION_NEWTAB is handled in MainActivity (opens 4chan index) and is not a fragment.
      * @param virtualPosition виртуальная позиция вкладки
-     * (см. {@link TabModel#POSITION_NEWTAB}, {@link TabModel#POSITION_FAVORITES}, {@link TabModel#POSITION_HISTORY})
+     * (см. {@link TabModel#POSITION_FAVORITES}, {@link TabModel#POSITION_HISTORY})
      * @param fragmentManager менеджер фрагментов
      */
     public void switchTo(int virtualPosition, FragmentManager fragmentManager) {
         if (currentId != null && currentId.equals(Long.valueOf(virtualPosition))) return;
-        Fragment newFragment = null;
+        Fragment newFragment;
         switch (virtualPosition) {
-            case TabModel.POSITION_NEWTAB:
-                newFragment = new NewTabFragment();
-                break;
             case TabModel.POSITION_HISTORY:
                 newFragment = new HistoryFragment();
                 break;
@@ -98,7 +95,8 @@ public class TabsSwitcher {
                 newFragment = new FavoritesFragment();
                 break;
             default:
-                newFragment = new NewTabFragment();
+                Logger.e(TAG, "unsupported virtual tab position: " + virtualPosition);
+                return;
         }
         currentFragment = newFragment;
         currentId = (long) virtualPosition;

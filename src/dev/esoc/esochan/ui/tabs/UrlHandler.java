@@ -48,7 +48,7 @@ public class UrlHandler {
     public static void open(final String url, final MainActivity activity, boolean useFakeBrowserIfUrlNotHandled) {
         TabModel model = getTabModel(getPageModel(url), activity.getResources());
         if (model != null) {
-            open(model, activity, true);
+            open(model, activity, true, false);
             return;
         }
         if (useFakeBrowserIfUrlNotHandled) {
@@ -89,18 +89,28 @@ public class UrlHandler {
     public static void open(UrlPageModel urlPageModel, MainActivity activity, boolean switchAfter, String tabTitle) {
         TabModel model = getTabModel(urlPageModel, activity.getResources());
         if (tabTitle != null) model.title = tabTitle;
-        open(model, activity, switchAfter);
+        open(model, activity, switchAfter, false);
+    }
+
+    /** Always create a new tab, even if an identical page is already open. */
+    public static void openNew(UrlPageModel urlPageModel, MainActivity activity) {
+        TabModel model = getTabModel(urlPageModel, activity.getResources());
+        if (model == null) return;
+        open(model, activity, true, true);
     }
     
-    private static void open(TabModel model, MainActivity activity, boolean switchAfter) {
+    private static void open(TabModel model, MainActivity activity, boolean switchAfter, boolean forceNew) {
+        if (model == null) return;
         TabsAdapter tabsAdapter = activity.tabsAdapter;
-        for (int i=0; i<tabsAdapter.getCount(); ++i) {
-            if (tabsAdapter.getItem(i).hash != null && tabsAdapter.getItem(i).hash.equals(model.hash)) {
-                tabsAdapter.getItem(i).startItemNumber = model.startItemNumber;
-                tabsAdapter.getItem(i).startItemTop = 0;
-                tabsAdapter.getItem(i).forceUpdate = true;
-                if (switchAfter) tabsAdapter.setSelectedItem(i);
-                return;
+        if (!forceNew) {
+            for (int i=0; i<tabsAdapter.getCount(); ++i) {
+                if (tabsAdapter.getItem(i).hash != null && tabsAdapter.getItem(i).hash.equals(model.hash)) {
+                    tabsAdapter.getItem(i).startItemNumber = model.startItemNumber;
+                    tabsAdapter.getItem(i).startItemTop = 0;
+                    tabsAdapter.getItem(i).forceUpdate = true;
+                    if (switchAfter) tabsAdapter.setSelectedItem(i);
+                    return;
+                }
             }
         }
         

@@ -21,6 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     <dimen name="tab_height">48dp</dimen>
     <dimen name="panel_height">40dp</dimen>
+    <dimen name="drawer_width">320dp</dimen>
+    <dimen name="list_row_icon_size">40dp</dimen>
+    <dimen name="list_row_padding_horizontal">16dp</dimen>
+    <dimen name="list_row_padding_horizontal_tight">8dp</dimen>
     
     <dimen name="post_thumbnail_size">64dp</dimen>
     <dimen name="post_badge_size">16dp</dimen>

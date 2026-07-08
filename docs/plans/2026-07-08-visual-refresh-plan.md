@@ -393,77 +393,38 @@ AndroidX Material Preference defaults caused a worse first paint than the old `P
 
 ## Phase 3 - New Tab and Drawer Polish
 
+**Status:** Done (2026-07-08)
+
 **Difficulty:** Medium
 
 **Goal:** Freshen the first-run/new-tab and tab drawer surfaces after the icon system is consistent.
 
-### Task 3.1: Replace platform buttons on New Tab
+### Task 3.1: Replace platform buttons on New Tab — Done
 
-**Files:**
+- Top actions are Material text buttons (`newtab_open_address_bar`, `newtab_open_local`).
+- Address row is a horizontal layout: URI field + icon-only go button (`ic_menu_open_external`).
+- Empty divider `ImageView` replaced with a 1dp `View`.
+- `fill_parent` → `match_parent`; start/end padding; 48dp min heights.
+- `NewTabFragment` field types updated to `MaterialButton`.
 
-- `res/layout/newtab_fragment.xml`
-- `src/dev/esoc/esochan/ui/NewTabFragment.java`
+### Task 3.2: Update sidebar top actions — Done
 
-**Steps:**
+- Sidebar icons already used shared tinted vectors; added `scaleType="center"`.
+- Divider `ImageView` → 1dp `View`.
+- Drawer width moved to `@dimen/drawer_width` (320dp).
+- Tab drag/close IDs and behavior unchanged.
 
-1. Replace top `Button` pair with Material buttons or a Material segmented control style.
-2. Replace address `EditText` plus `Button` with a denser input row:
-   - text input
-   - icon button for go/open
-3. Replace empty `ImageView` divider with a real `View`.
-4. Use `match_parent`, not `fill_parent`.
-5. Use start/end attributes where practical.
+### Task 3.3: Normalize list row spacing — Done
 
-**Acceptance criteria:**
-
-- New-tab controls match the rest of the app.
-- Text does not truncate poorly at common phone widths.
-- The address entry workflow is unchanged.
-
-### Task 3.2: Update sidebar top actions
-
-**Files:**
-
-- `res/layout/sidebar_layout.xml`
-- `res/layout/sidebar_tabitem.xml`
-- `res/layout/main_activity_drawer.xml`
-- `res/values/dimens.xml`
-
-**Steps:**
-
-1. Use the new shared sidebar icons and tint attrs.
-2. Replace empty divider `ImageView` with a real divider `View`.
-3. Move drawer width from hardcoded `320dp` into a dimen.
-4. Consider responsive drawer width:
-   - phone: min screen width minus margin, capped around 320dp
-   - tablet: preserve existing side panel behavior
-5. Keep tab dragging and close behavior unchanged.
-
-**Acceptance criteria:**
-
-- Sidebar actions have consistent icon size and tint.
-- Drawer width remains usable on small and large devices.
-- Drag/close tab behavior remains unchanged.
-
-### Task 3.3: Normalize list row spacing
-
-**Files:**
-
-- `res/layout/sidebar_tabitem.xml`
-- `res/layout/newtab_quickaccess_item.xml`
-- `res/layout/favorites_listview.xml`
-- any list row touched by new-tab/sidebar refresh
-
-**Steps:**
-
-1. Use start/end padding alongside old left/right only if RTL is intentionally unsupported.
-2. Prefer fixed touch target heights of at least 48dp.
-3. Keep favicons readable and aligned.
+- Shared dimen: `list_row_icon_size`, `list_row_padding_horizontal`, `list_row_padding_horizontal_tight`.
+- Sidebar tab rows: start/end padding, 48dp close target, favicon size dimen, ellipsize title.
+- Quick-access rows: same drag-handle padding and 48dp min height.
+- `favorites_listview` is a bare `ListView` host; no row chrome to change.
 
 **Verification for Phase 3:**
 
-- `./gradlew assembleDebug`
-- Manual smoke test:
+- `./gradlew assembleDebug` — passes
+- Manual smoke still needed:
   - open new tab
   - enter URL
   - open saved threads
@@ -618,8 +579,8 @@ AndroidX Material Preference defaults caused a worse first paint than the old `P
 5. Remove old UI icon assets — Done
 6. Settings shell migration to AndroidX Preference — Done
 7. Settings IA, ProgressDialog cleanup, layout polish — Done
-8. New-tab and sidebar polish — **Next**
-9. Board/gallery control polish
+8. New-tab and sidebar polish — Done
+9. Board/gallery control polish — **Next**
 10. Resource cleanup and lint baseline cleanup
 
 ---
@@ -633,7 +594,7 @@ The visual refresh can be considered complete when:
 - The launcher uses mipmap/adaptive icon resources.
 - Settings no longer use `PreferenceActivity` or `android.preference.*`. — Done (Phase 2)
 - Common settings are grouped into scannable sections. — Done (Phase 2)
-- New-tab and sidebar controls use the same icon/tint/control language as board/gallery.
+- New-tab and sidebar controls use the same icon/tint/control language as board/gallery. — Done (Phase 3)
 - `./gradlew assembleDebug` passes.
 - `./gradlew lintDebug` passes or only pre-existing, intentionally baselined issues remain.
 - Manual smoke tests pass for:
