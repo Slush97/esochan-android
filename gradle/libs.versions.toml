@@ -16,6 +16,7 @@ media3 = "1.9.2"
 kotlinx-coroutines = "1.10.1"
 androidx-lifecycle = "2.8.7"
 androidx-security-crypto = "1.0.0"
+androidx-preference = "1.2.1"
 material = "1.12.0"
 
 [libraries]
@@ -38,6 +39,7 @@ media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", versi
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "androidx-security-crypto" }
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "androidx-preference" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]

@@ -47,15 +47,15 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.Bundle;
-import android.preference.CheckBoxPreference;
-import android.preference.EditTextPreference;
-import android.preference.Preference;
-import android.preference.PreferenceCategory;
-import android.preference.PreferenceGroup;
-import android.preference.Preference.OnPreferenceChangeListener;
 import android.text.InputFilter;
 import android.text.InputType;
+
+import androidx.preference.CheckBoxPreference;
+import androidx.preference.EditTextPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceGroup;
+import androidx.preference.Preference.OnPreferenceChangeListener;
 
 public abstract class AbstractChanModule implements HttpChanModule {
     private static final String TAG = "AbstractChanModule";
@@ -160,8 +160,10 @@ public abstract class AbstractChanModule implements HttpChanModule {
         proxyHostPref.setSummary(R.string.pref_proxy_host_summary);
         proxyHostPref.setKey(getSharedKey(PREF_KEY_PROXY_HOST));
         proxyHostPref.setDefaultValue(DEFAULT_PROXY_HOST);
-        proxyHostPref.getEditText().setSingleLine();
-        proxyHostPref.getEditText().setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        proxyHostPref.setOnBindEditTextListener(editText -> {
+            editText.setSingleLine();
+            editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        });
         proxyHostPref.setOnPreferenceChangeListener(updateHttpListener);
         proxyCat.addPreference(proxyHostPref);
         proxyHostPref.setDependency(getSharedKey(PREF_KEY_USE_PROXY));
@@ -171,8 +173,10 @@ public abstract class AbstractChanModule implements HttpChanModule {
         proxyHostPort.setSummary(R.string.pref_proxy_port_summary);
         proxyHostPort.setKey(getSharedKey(PREF_KEY_PROXY_PORT));
         proxyHostPort.setDefaultValue(DEFAULT_PROXY_PORT);
-        proxyHostPort.getEditText().setSingleLine();
-        proxyHostPort.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
+        proxyHostPort.setOnBindEditTextListener(editText -> {
+            editText.setSingleLine();
+            editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        });
         proxyHostPort.setOnPreferenceChangeListener(updateHttpListener);
         proxyCat.addPreference(proxyHostPort);
         proxyHostPort.setDependency(getSharedKey(PREF_KEY_USE_PROXY));
@@ -182,20 +186,22 @@ public abstract class AbstractChanModule implements HttpChanModule {
         final Context context = group.getContext();
         EditTextPreference passwordPref = new EditTextPreference(context) {
             @Override
-            protected void showDialog(Bundle state) {
+            protected void onClick() {
                 if (createPassword()) {
                     setText(getDefaultPassword());
                 }
-                super.showDialog(state);
+                super.onClick();
             }
         };
         passwordPref.setTitle(R.string.pref_password_title);
         passwordPref.setDialogTitle(R.string.pref_password_title);
         passwordPref.setSummary(R.string.pref_password_summary);
         passwordPref.setKey(getSharedKey(PREF_KEY_PASSWORD));
-        passwordPref.getEditText().setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-        passwordPref.getEditText().setSingleLine();
-        passwordPref.getEditText().setFilters(new InputFilter[] { new InputFilter.LengthFilter(255) });
+        passwordPref.setOnBindEditTextListener(editText -> {
+            editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+            editText.setSingleLine();
+            editText.setFilters(new InputFilter[] { new InputFilter.LengthFilter(255) });
+        });
         group.addPreference(passwordPref);
     }
 

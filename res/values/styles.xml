@@ -47,9 +47,54 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.8</item>
     </style>
+
+    <!-- Material Preference reserves empty icon gutters on sw360dp+; old PreferenceActivity did not. -->
+    <style name="EsoPreferenceTheme" parent="@style/PreferenceThemeOverlay">
+        <item name="preferenceCategoryTitleTextColor">?attr/postNameForeground</item>
+        <item name="preferenceStyle">@style/EsoPreference</item>
+        <item name="preferenceCategoryStyle">@style/EsoPreferenceCategory</item>
+        <item name="preferenceScreenStyle">@style/EsoPreference</item>
+        <item name="checkBoxPreferenceStyle">@style/EsoCheckBoxPreference</item>
+        <item name="dialogPreferenceStyle">@style/EsoDialogPreference</item>
+        <item name="editTextPreferenceStyle">@style/EsoEditTextPreference</item>
+        <item name="dropdownPreferenceStyle">@style/EsoDropDownPreference</item>
+    </style>
+
+    <style name="EsoPreference" parent="@style/Preference.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <style name="EsoPreferenceCategory" parent="@style/Preference.Category.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <style name="EsoCheckBoxPreference" parent="@style/Preference.CheckBoxPreference.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <style name="EsoDialogPreference" parent="@style/Preference.DialogPreference.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <style name="EsoEditTextPreference" parent="@style/Preference.DialogPreference.EditTextPreference.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <style name="EsoDropDownPreference" parent="@style/Preference.DropDown.Material">
+        <item name="iconSpaceReserved">false</item>
+    </style>
+
+    <!-- Applied on top of the selected app theme in PreferencesActivity only. -->
+    <style name="Theme_Preferences_NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
     
     <style name="Theme_Light_Base" parent="@style/Theme_Light_Switch">
         <item name="android:windowBackground">?attr/activityRootBackground</item>
+        <item name="preferenceTheme">@style/EsoPreferenceTheme</item>
         <item name="dialogBackgroundShadow">@drawable/dialog_full_holo_light</item>
         <item name="iconItemPrevious">@drawable/ic_action_previous</item>
         <item name="iconItemNext">@drawable/ic_action_next</item>
@@ -69,6 +114,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     <style name="Theme_Dark_Base" parent="@style/Theme_Dark_Switch">
         <item name="android:windowBackground">?attr/activityRootBackground</item>
+        <item name="preferenceTheme">@style/EsoPreferenceTheme</item>
         <item name="dialogBackgroundShadow">@drawable/dialog_full_holo_dark</item>
         <item name="iconItemPrevious">@drawable/ic_action_previous</item>
         <item name="iconItemNext">@drawable/ic_action_next</item>

@@ -1,22 +1,30 @@
 /*
  * esochan (Meta Imageboard Client)
  * Copyright (C) 2014-2016  miku-nyan <https://github.com/miku-nyan>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package dev.esoc.esochan.ui.settings;
+
+import android.app.Activity;
+import android.content.DialogInterface;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
@@ -25,35 +33,28 @@ import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.http.client.ExtendedHttpClient;
 import dev.esoc.esochan.http.streamer.HttpRequestModel;
 import dev.esoc.esochan.http.streamer.HttpStreamer;
-import org.json.JSONObject;
 import dev.esoc.esochan.ui.tabs.UrlHandler;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.ProgressDialog;
-import android.content.DialogInterface;
-import android.widget.Toast;
+import org.json.JSONObject;
 
 public class AppUpdatesChecker {
     private static final String TAG = "AppUpdatesChecker";
-    
+
     // Dead upstream URLs, disabled
     // private static final String URL = "http://miku-nyan.github.io/Overchan-Android/data/version.json";
     // private static final String SITE_URL = "http://miku-nyan.github.io/Overchan-Android/dl.html";
     private static final String URL = "";
     private static final String SITE_URL = "";
-    
+
     public static void checkForUpdates(final Activity activity) {
         final CancellableTask task = new CancellableTask.BaseCancellableTask();
-        final ProgressDialog progressDialog = new ProgressDialog(activity);
-        progressDialog.setMessage(activity.getString(R.string.app_update_checking));
-        progressDialog.setCanceledOnTouchOutside(false);
-        progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                task.cancel();
-            }
-        });
-        progressDialog.show();
+        final AlertDialog progressDialog = SettingsProgress.show(activity,
+                activity.getString(R.string.app_update_checking),
+                new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        task.cancel();
+                    }
+                });
         Async.runAsync(new Runnable() {
             @Override
             public void run() {
@@ -91,12 +92,12 @@ public class AppUpdatesChecker {
                                         UrlHandler.launchExternalBrowser(activity, SITE_URL);
                                     }
                                 };
-                                new AlertDialog.Builder(activity).
-                                        setTitle(R.string.app_update_update_available).
-                                        setMessage(activity.getString(R.string.app_update_update_dialog_text, newVersionName)).
-                                        setPositiveButton(android.R.string.yes, onClickYes).
-                                        setNegativeButton(android.R.string.no, null).
-                                        show();
+                                new MaterialAlertDialogBuilder(activity)
+                                        .setTitle(R.string.app_update_update_available)
+                                        .setMessage(activity.getString(R.string.app_update_update_dialog_text, newVersionName))
+                                        .setPositiveButton(android.R.string.yes, onClickYes)
+                                        .setNegativeButton(android.R.string.no, null)
+                                        .show();
                             } else {
                                 Toast.makeText(activity, R.string.app_update_update_not_required, Toast.LENGTH_LONG).show();
                             }

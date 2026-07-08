@@ -429,8 +429,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="pref_cat_appearance">Внешний вид</string>
     <string name="pref_cat_advanced">Дополнительные</string>
     <string name="pref_cat_date_time">Дата и время</string>
-    <string name="pref_cat_personal">Личные данные</string>
+    <string name="pref_cat_personal">Идентичность при постинге</string>
     <string name="pref_cat_downloads">Загрузки</string>
+    <string name="pref_cat_privacy">Приватность и безопасность</string>
+    <string name="pref_cat_updates">Обновления и подписки</string>
     <string name="pref_cat_autoupdate">Автообновление</string>
     <string name="pref_cat_subscriptions">Отслеживание ответов</string>
     <string name="pref_cat_cache">Кэширование</string>

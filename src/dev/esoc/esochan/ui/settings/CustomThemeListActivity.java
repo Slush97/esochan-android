@@ -22,7 +22,6 @@ import java.io.FileInputStream;
 import java.util.ArrayList;
 
 import android.app.ListActivity;
-import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -30,6 +29,8 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
 import dev.esoc.esochan.common.Async;
@@ -69,7 +70,7 @@ public class CustomThemeListActivity extends ListActivity {
         setListAdapter(adapter);
         
         final CancellableTask task = new CancellableTask.BaseCancellableTask();
-        final ProgressDialog progressDialog = showProgressDialog(task);
+        final AlertDialog progressDialog = showProgressDialog(task);
         Async.runAsync(new Runnable() {
             @Override
             public void run() {
@@ -122,7 +123,7 @@ public class CustomThemeListActivity extends ListActivity {
         }
         final String url = URL_PATH + files.get(position);
         final CancellableTask task = new CancellableTask.BaseCancellableTask();
-        final ProgressDialog progressDialog = showProgressDialog(task);
+        final AlertDialog progressDialog = showProgressDialog(task);
         Async.runAsync(new Runnable() {
             @Override
             public void run() {
@@ -183,17 +184,13 @@ public class CustomThemeListActivity extends ListActivity {
         }
     }
     
-    private ProgressDialog showProgressDialog(final CancellableTask task) {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage(getString(R.string.custom_themes_loading));
-        progressDialog.setCanceledOnTouchOutside(false);
-        progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                task.cancel();
-            }
-        });
-        progressDialog.show();
-        return progressDialog;
+    private AlertDialog showProgressDialog(final CancellableTask task) {
+        return SettingsProgress.show(this, getString(R.string.custom_themes_loading),
+                new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        task.cancel();
+                    }
+                });
     }
 }

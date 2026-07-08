@@ -23,7 +23,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.TypedArray;
 import android.graphics.drawable.GradientDrawable;
-import android.preference.ListPreference;
 import android.util.AttributeSet;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
@@ -34,9 +33,10 @@ import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
+import androidx.preference.ListPreference;
+
 import dev.esoc.esochan.R;
 
-@SuppressWarnings("deprecation")
 public class ThemePreference extends ListPreference {
     private final float density;
 
@@ -45,21 +45,32 @@ public class ThemePreference extends ListPreference {
         density = context.getResources().getDisplayMetrics().density;
     }
 
+    public ThemePreference(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        density = context.getResources().getDisplayMetrics().density;
+    }
+
     @Override
-    protected void onPrepareDialogBuilder(AlertDialog.Builder builder) {
+    protected void onClick() {
         final CharSequence[] entries = getEntries();
         final CharSequence[] values = getEntryValues();
+        if (entries == null || values == null || entries.length == 0) {
+            return;
+        }
         int selected = findIndexOfValue(getValue());
-        builder.setSingleChoiceItems(new PreviewAdapter(entries, values, selected), selected,
-                new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String value = values[which].toString();
-                if (callChangeListener(value)) setValue(value);
-                dialog.dismiss();
-            }
-        });
-        builder.setPositiveButton(null, null);
+        new AlertDialog.Builder(getContext())
+                .setTitle(getDialogTitle())
+                .setSingleChoiceItems(new PreviewAdapter(entries, values, selected), selected,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String value = values[which].toString();
+                                if (callChangeListener(value)) setValue(value);
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private int dp(float value) {

@@ -21,33 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <PreferenceScreen
         android:key="@string/pref_key_cat_chans"
         android:title="@string/pref_cat_chans" />
-    
-    <PreferenceCategory android:title="@string/pref_cat_personal" >
-        <EditTextPreference
-            android:key="@string/pref_key_name"
-            android:title="@string/pref_name_title"
-            android:hint="@string/pref_name_hint"
-            android:summary="@string/pref_name_summary"
-            android:inputType="text"
-            android:singleLine="true"
-            android:maxLength="255" />
-        
-        <EditTextPreference
-            android:key="@string/pref_key_email"
-            android:title="@string/pref_email_title"
-            android:hint="@string/pref_email_hint"
-            android:summary="@string/pref_email_summary"
-            android:inputType="text"
-            android:singleLine="true"
-            android:maxLength="255" />
-        
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="@string/pref_key_hide_personal"
-            android:title="@string/pref_hide_personal_title"
-            android:summary="@string/pref_hide_personal_summary" />
-    </PreferenceCategory>
-    
+
     <PreferenceCategory
         android:key="@string/pref_key_cat_appearance"
         android:title="@string/pref_cat_appearance" >
@@ -58,15 +32,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:entries="@array/pref_theme_choices"
             android:entryValues="@array/pref_theme_values"
             android:defaultValue="@string/pref_theme_value_default" />
-        
+
         <ListPreference
-            android:key="@string/pref_key_font_size" 
+            android:key="@string/pref_key_font_size"
             android:title="@string/pref_font_size_title"
             android:dialogTitle="@string/pref_font_size_title"
-            android:entries="@array/pref_font_size_choices" 
-            android:entryValues="@array/pref_font_size_values" 
+            android:entries="@array/pref_font_size_choices"
+            android:entryValues="@array/pref_font_size_values"
             android:defaultValue="@string/pref_font_size_value_default" />
-        
+
         <EditTextPreference
             android:key="@string/pref_key_cut_posts"
             android:title="@string/pref_cut_posts_title"
@@ -75,32 +49,45 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:inputType="number"
             android:singleLine="true"
             android:maxLength="4" />
-        
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_open_spoilers"
             android:title="@string/pref_open_spoilers_title"
             android:summary="@string/pref_open_spoilers_summary" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_hide_actionbar_on_scroll"
             android:title="@string/pref_hide_actionbar_on_scroll_title"
             android:summary="@string/pref_hide_actionbar_on_scroll_summary" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_replies_only_quantity"
             android:title="@string/pref_replies_only_quantity_title"
             android:summary="@string/pref_replies_only_quantity_summary" />
-        
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_show_date"
+            android:title="@string/pref_show_date_title"
+            android:summary="@string/pref_show_date_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:dependency="@string/pref_key_show_date"
+            android:key="@string/pref_key_local_time"
+            android:title="@string/pref_local_time_title"
+            android:summary="@string/pref_local_time_summary" />
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_sidepanel_hide"
             android:title="@string/pref_sidepanel_hide_title"
             android:summary="@string/pref_sidepanel_hide_summary"
             android:disableDependentsState="true" />
-        
+
         <ListPreference
             android:key="@string/pref_key_sidepanel_width"
             android:title="@string/pref_sidepanel_width_title"
@@ -108,143 +95,95 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:entries="@array/pref_sidepanel_width_choices"
             android:entryValues="@array/pref_sidepanel_width_values"
             android:defaultValue="@string/pref_sidepanel_width_value_default" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_sidepanel_right"
             android:title="@string/pref_sidepanel_right_title"
             android:summary="@string/pref_sidepanel_right_summary"
             android:dependency="@string/pref_key_sidepanel_hide" />
-        
-        <PreferenceScreen
-            android:key="@string/pref_key_gallery_screen"
-            android:title="@string/pref_gallery_screen_title"
-            android:summary="@string/pref_gallery_screen_summary" >
-            <CheckBoxPreference
-                android:defaultValue="false"
-                android:key="@string/pref_key_gallery_fullscreen"
-                android:title="@string/pref_gallery_fullscreen_title" />
-            
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="@string/pref_key_gallery_swipe_to_close"
-                android:title="@string/pref_gallery_swipe_to_close_title"
-                android:summary="@string/pref_gallery_swipe_to_close_summary" />
-            
-            <CheckBoxPreference
-                android:defaultValue="false"
-                android:key="@string/pref_key_gallery_scroll_thread"
-                android:title="@string/pref_gallery_scroll_thread_title"
-                android:summary="@string/pref_gallery_scroll_thread_summary" />
-            
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="@string/pref_key_gallery_videoplayer"
-                android:title="@string/pref_gallery_videoplayer_title"
-                android:summary="@string/pref_gallery_videoplayer_summary"
-                android:disableDependentsState="true" />
-            
-            <CheckBoxPreference
-                android:defaultValue="false"
-                android:key="@string/pref_key_do_not_download_videos"
-                android:title="@string/pref_do_not_download_videos_title"
-                android:summary="@string/pref_do_not_download_videos_summary"
-                android:dependency="@string/pref_key_gallery_videoplayer" />
-            
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="@string/pref_key_gallery_audioplayer"
-                android:title="@string/pref_gallery_audioplayer_title"
-                android:summary="@string/pref_gallery_audioplayer_summary" />
-            
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="@string/pref_key_gallery_scaleimageview"
-                android:title="@string/pref_gallery_scaleimageview_title"
-                android:summary="@string/pref_gallery_scaleimageview_summary" />
-            
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="@string/pref_key_gallery_nativegif"
-                android:title="@string/pref_gallery_nativegif_title"
-                android:summary="@string/pref_gallery_nativegif_summary" />
-        </PreferenceScreen>
     </PreferenceCategory>
-    
-    <PreferenceCategory
-        android:key="@string/pref_key_cat_advanced"
-        android:title="@string/pref_cat_advanced" >
-        <Preference
-            android:key="@string/pref_key_ssl_certificates"
-            android:title="@string/pref_ssl_certificates_title"
-            android:summary="@string/pref_ssl_certificates_summary" />
-        
+
+    <PreferenceScreen
+        android:key="@string/pref_key_gallery_screen"
+        android:title="@string/pref_gallery_screen_title"
+        android:summary="@string/pref_gallery_screen_summary" >
         <CheckBoxPreference
             android:defaultValue="false"
-            android:key="@string/pref_key_random_hash"
-            android:title="@string/pref_random_hash_title"
-            android:summary="@string/pref_random_hash_summary" />
-        
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_show_all_chans_list"
-            android:title="@string/pref_show_all_chans_list_title"
-            android:summary="@string/pref_show_all_chans_list_summary" />
-        
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_show_nsfw_boards"
-            android:title="@string/pref_show_nsfw_boards_title"
-            android:summary="@string/pref_show_nsfw_boards_summary" />
-        
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_mask_pictures"
-            android:title="@string/pref_mask_pictures_title"
-            android:summary="@string/pref_mask_pictures_summary" />
-        
-        <Preference
-            android:key="@string/pref_key_autohide"
-            android:title="@string/pref_autohide_title"
-            android:summary="@string/pref_autohide_summary" />
-        
-        <!-- <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_hide_completely"
-            android:title="@string/pref_hide_completely_title"
-            android:summary="@string/pref_hide_completely_summary" />  -->
-        
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_swipe_to_hide_thread"
-            android:title="@string/pref_swipe_to_hide_title"
-            android:summary="@string/pref_swipe_to_hide_summary" />
-        
+            android:key="@string/pref_key_gallery_fullscreen"
+            android:title="@string/pref_gallery_fullscreen_title" />
+
         <CheckBoxPreference
             android:defaultValue="true"
-            android:key="@string/pref_key_external_links_confirmation"
-            android:title="@string/pref_external_links_confirmation_title"
-            android:summary="@string/pref_external_links_confirmation_summary" />
-        
+            android:key="@string/pref_key_gallery_swipe_to_close"
+            android:title="@string/pref_gallery_swipe_to_close_title"
+            android:summary="@string/pref_gallery_swipe_to_close_summary" />
+
         <CheckBoxPreference
             android:defaultValue="false"
-            android:key="@string/pref_key_do_not_close_tabs"
-            android:title="@string/pref_do_not_close_tabs_title"
-            android:summary="@string/pref_do_not_close_tabs_summary" />
-        
+            android:key="@string/pref_key_gallery_scroll_thread"
+            android:title="@string/pref_gallery_scroll_thread_title"
+            android:summary="@string/pref_gallery_scroll_thread_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_gallery_videoplayer"
+            android:title="@string/pref_gallery_videoplayer_title"
+            android:summary="@string/pref_gallery_videoplayer_summary"
+            android:disableDependentsState="true" />
+
         <CheckBoxPreference
             android:defaultValue="false"
-            android:key="@string/pref_key_scroll_volume_buttons"
-            android:title="@string/pref_scroll_volume_buttons_title"
-            android:summary="@string/pref_scroll_volume_buttons_summary" />
-        
+            android:key="@string/pref_key_do_not_download_videos"
+            android:title="@string/pref_do_not_download_videos_title"
+            android:summary="@string/pref_do_not_download_videos_summary"
+            android:dependency="@string/pref_key_gallery_videoplayer" />
+
         <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_pin_markup"
-            android:title="@string/pref_pin_markup_title"
-            android:summary="@string/pref_pin_markup_summary" />
+            android:defaultValue="true"
+            android:key="@string/pref_key_gallery_audioplayer"
+            android:title="@string/pref_gallery_audioplayer_title"
+            android:summary="@string/pref_gallery_audioplayer_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_gallery_scaleimageview"
+            android:title="@string/pref_gallery_scaleimageview_title"
+            android:summary="@string/pref_gallery_scaleimageview_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_gallery_nativegif"
+            android:title="@string/pref_gallery_nativegif_title"
+            android:summary="@string/pref_gallery_nativegif_summary" />
+    </PreferenceScreen>
+
+    <PreferenceCategory android:title="@string/pref_cat_personal" >
+        <EditTextPreference
+            android:key="@string/pref_key_name"
+            android:title="@string/pref_name_title"
+            android:hint="@string/pref_name_hint"
+            android:summary="@string/pref_name_summary"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLength="255" />
+
+        <EditTextPreference
+            android:key="@string/pref_key_email"
+            android:title="@string/pref_email_title"
+            android:hint="@string/pref_email_hint"
+            android:summary="@string/pref_email_summary"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLength="255" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="@string/pref_key_hide_personal"
+            android:title="@string/pref_hide_personal_title"
+            android:summary="@string/pref_hide_personal_summary" />
     </PreferenceCategory>
-    
+
     <PreferenceCategory android:title="@string/pref_cat_downloads" >
         <EditTextPreference
             android:defaultValue=""
@@ -253,7 +192,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:summary="@string/pref_download_dir_summary"
             android:inputType="text"
             android:singleLine="true" />
-        
+
         <ListPreference
             android:key="@string/pref_key_download_format"
             android:title="@string/pref_download_format_title"
@@ -261,7 +200,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:entries="@array/pref_download_format_choices"
             android:entryValues="@array/pref_download_format_values"
             android:defaultValue="@string/pref_download_format_value_default" />
-        
+
         <ListPreference
             android:key="@string/pref_key_download_thumbs"
             android:title="@string/pref_download_thumbs_title"
@@ -269,43 +208,72 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:entries="@array/pref_download_thumbs_choices"
             android:entryValues="@array/pref_download_thumbs_values"
             android:defaultValue="@string/pref_download_thumbs_value_default" />
-        
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_download_lazy"
             android:title="@string/pref_download_lazy_title"
             android:summary="@string/pref_download_lazy_summary" />
+
+        <EditTextPreference
+            android:key="@string/pref_key_cache_maxsize"
+            android:title="@string/pref_cache_maxsize_title"
+            android:hint="@string/pref_cache_maxsize_hint"
+            android:summary="@string/pref_cache_maxsize_summary"
+            android:inputType="number"
+            android:singleLine="true"
+            android:maxLength="4" />
+
+        <Preference
+            android:key="@string/pref_key_clear_cache"
+            android:title="@string/pref_clear_cache_title" />
     </PreferenceCategory>
-    
-    <PreferenceCategory android:title="@string/pref_cat_date_time" >
+
+    <PreferenceCategory android:title="@string/pref_cat_privacy" >
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_show_nsfw_boards"
+            android:title="@string/pref_show_nsfw_boards_title"
+            android:summary="@string/pref_show_nsfw_boards_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_mask_pictures"
+            android:title="@string/pref_mask_pictures_title"
+            android:summary="@string/pref_mask_pictures_summary" />
+
+        <Preference
+            android:key="@string/pref_key_autohide"
+            android:title="@string/pref_autohide_title"
+            android:summary="@string/pref_autohide_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_swipe_to_hide_thread"
+            android:title="@string/pref_swipe_to_hide_title"
+            android:summary="@string/pref_swipe_to_hide_summary" />
+
         <CheckBoxPreference
             android:defaultValue="true"
-            android:key="@string/pref_key_show_date"
-            android:title="@string/pref_show_date_title"
-            android:summary="@string/pref_show_date_summary" />
-        
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:dependency="@string/pref_key_show_date"
-            android:key="@string/pref_key_local_time"
-            android:title="@string/pref_local_time_title"
-            android:summary="@string/pref_local_time_summary" />
+            android:key="@string/pref_key_external_links_confirmation"
+            android:title="@string/pref_external_links_confirmation_title"
+            android:summary="@string/pref_external_links_confirmation_summary" />
     </PreferenceCategory>
-    
-    <PreferenceCategory android:title="@string/pref_cat_autoupdate">
+
+    <PreferenceCategory android:title="@string/pref_cat_updates" >
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_enable_autoupdate"
             android:title="@string/pref_enable_autoupdate_title"
             android:summary="@string/pref_enable_autoupdate_summary" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_autoupdate_only_wifi"
             android:title="@string/pref_autoupdate_only_wifi_title"
             android:summary="@string/pref_autoupdate_only_wifi_summary"
             android:dependency="@string/pref_key_enable_autoupdate" />
-        
+
         <EditTextPreference
             android:key="@string/pref_key_autoupdate_delay"
             android:title="@string/pref_autoupdate_delay_title"
@@ -315,77 +283,99 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:singleLine="true"
             android:dependency="@string/pref_key_enable_autoupdate"
             android:maxLength="4" />
-        
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_autoupdate_background"
             android:title="@string/pref_autoupdate_background_title"
             android:summary="@string/pref_autoupdate_background_summary"
             android:dependency="@string/pref_key_enable_autoupdate" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_autoupdate_notification"
             android:title="@string/pref_autoupdate_notification_title"
             android:summary="@string/pref_autoupdate_notification_summary"
             android:dependency="@string/pref_key_enable_autoupdate" />
-    </PreferenceCategory>
-    
-    <PreferenceCategory android:title="@string/pref_cat_subscriptions">
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_subscriptions_enabled"
             android:title="@string/pref_subscriptions_enabled_title"
             android:summary="@string/pref_subscriptions_enabled_summary" />
-        
+
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="@string/pref_key_subscribe_threads"
             android:title="@string/pref_subscribe_threads_title"
             android:summary="@string/pref_subscribe_threads_summary"
             android:dependency="@string/pref_key_subscriptions_enabled" />
-        
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_highlight_subscriptions"
             android:title="@string/pref_highlight_subscriptions_title"
             android:summary="@string/pref_highlight_subscriptions_summary" />
-        
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="@string/pref_key_subscribe_own"
             android:title="@string/pref_subscribe_own_title"
             android:summary="@string/pref_subscribe_own_summary" />
-        
+
         <Preference
             android:key="@string/pref_key_clear_subscriptions"
             android:title="@string/pref_clear_subscriptions_title" />
     </PreferenceCategory>
-    
-    <PreferenceCategory android:title="@string/pref_cat_cache">
-        <EditTextPreference
-            android:key="@string/pref_key_cache_maxsize"
-            android:title="@string/pref_cache_maxsize_title"
-            android:hint="@string/pref_cache_maxsize_hint"
-            android:summary="@string/pref_cache_maxsize_summary"
-            android:inputType="number"
-            android:singleLine="true"
-            android:maxLength="4" />
-        
+
+    <PreferenceCategory
+        android:key="@string/pref_key_cat_advanced"
+        android:title="@string/pref_cat_advanced" >
         <Preference
-            android:key="@string/pref_key_clear_cache"
-            android:title="@string/pref_clear_cache_title" />
+            android:key="@string/pref_key_ssl_certificates"
+            android:title="@string/pref_ssl_certificates_title"
+            android:summary="@string/pref_ssl_certificates_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_random_hash"
+            android:title="@string/pref_random_hash_title"
+            android:summary="@string/pref_random_hash_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_show_all_chans_list"
+            android:title="@string/pref_show_all_chans_list_title"
+            android:summary="@string/pref_show_all_chans_list_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_do_not_close_tabs"
+            android:title="@string/pref_do_not_close_tabs_title"
+            android:summary="@string/pref_do_not_close_tabs_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_scroll_volume_buttons"
+            android:title="@string/pref_scroll_volume_buttons_title"
+            android:summary="@string/pref_scroll_volume_buttons_summary" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/pref_key_pin_markup"
+            android:title="@string/pref_pin_markup_title"
+            android:summary="@string/pref_pin_markup_summary" />
     </PreferenceCategory>
-    
+
     <PreferenceCategory android:title="@string/pref_cat_about">
         <Preference
             android:key="@string/pref_key_about_version"
             android:title="@string/pref_about_version_title" />
-        
+
         <Preference
             android:key="@string/pref_key_about_license"
             android:title="@string/pref_about_license_title"
             android:summary="@string/pref_about_license_summary" />
     </PreferenceCategory>
-    
+
 </PreferenceScreen>

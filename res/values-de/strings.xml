@@ -422,8 +422,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="pref_cat_appearance">Aussehen</string>
     <string name="pref_cat_advanced">Erweiterte</string>
     <string name="pref_cat_date_time">Datum und Uhrzeit</string>
-    <string name="pref_cat_personal">Persönliche Daten</string>
+    <string name="pref_cat_personal">Posting-Identität</string>
     <string name="pref_cat_downloads">Herunterladen</string>
+    <string name="pref_cat_privacy">Privatsphäre und Sicherheit</string>
+    <string name="pref_cat_updates">Updates und Abonnements</string>
     <string name="pref_cat_autoupdate">Auto-update</string>
     <string name="pref_cat_subscriptions">Tracking von Antworten</string>
     <string name="pref_cat_cache">Cache</string>

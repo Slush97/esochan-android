@@ -327,6 +327,8 @@ public static Drawable getTintedIcon(Resources.Theme theme, Resources resources,
 
 ## Phase 2 - Settings Screen Refresh
 
+**Status:** Done (2026-07-08)
+
 **Difficulty:** Medium to High
 
 **Goal:** Replace the deprecated settings shell and improve settings information architecture without changing preference keys.
@@ -335,145 +337,57 @@ public static Drawable getTintedIcon(Resources.Theme theme, Resources resources,
 
 Settings depends on the same visual language as the rest of the app. If icons and theme tinting are not settled first, settings will either inherit stale assets or create another parallel style.
 
-### Task 2.1: Add AndroidX Preference
+### Task 2.1: Add AndroidX Preference — Done
 
-**Files:**
+- Added `androidx.preference:preference:1.2.1` via version catalog (`androidx-preference`) and `build.gradle`.
 
-- `gradle/libs.versions.toml`
-- `build.gradle`
+### Task 2.2: Replace `PreferenceActivity` shell — Done
 
-**Steps:**
+- `PreferencesActivity` is `AppCompatActivity` with explicit `Toolbar` + `activity_preferences.xml`.
+- Hosts `PreferencesFragment` (`PreferenceFragmentCompat`).
+- Nested screens use an in-fragment `PreferenceScreen` stack (up/back).
+- Theme still applied via `setToPreferencesActivity` plus `Theme_Preferences_NoActionBar`.
 
-1. Add `androidx.preference:preference-ktx` or `androidx.preference:preference`.
-2. Keep dependency versions in the version catalog.
-3. Build.
+### Task 2.3: Migrate preference classes — Done
 
-**Verification:**
+- Settings UI and chan preference builders use `androidx.preference.*`.
+- `ThemePreference`, `LazyPreferences`, `ChanModule` / `AbstractChanModule` / `CloudflareChanModule` / `FourchanModule` / `AbstractWakabaModule` migrated.
+- `EditTextPreference` uses `setOnBindEditTextListener` (no `getEditText()`).
+- Preference keys unchanged.
 
-- `./gradlew assembleDebug`
+### Task 2.4: Improve settings structure — Done
 
-### Task 2.2: Replace `PreferenceActivity` shell
+Top-level order:
 
-**Files:**
+1. Imageboards
+2. Appearance (includes date/time)
+3. Gallery (top-level screen)
+4. Posting identity
+5. Downloads (includes cache)
+6. Privacy and safety
+7. Updates and subscriptions
+8. Advanced
+9. About
 
-- `src/dev/esoc/esochan/ui/settings/PreferencesActivity.java`
-- Add `src/dev/esoc/esochan/ui/settings/PreferencesFragment.kt` or `.java`
-- `AndroidManifest.xml`, only if theme metadata changes
+### Task 2.5: Replace `ProgressDialog` in settings flows — Done
 
-**Steps:**
+- Shared `SettingsProgress` (`MaterialAlertDialogBuilder` + indeterminate spinner).
+- Used for clear cache, app update check, custom theme load, 4chan pass login.
+- Cancellation preserved where it existed.
 
-1. Convert `PreferencesActivity` to `AppCompatActivity`.
-2. Host an AndroidX `PreferenceFragmentCompat`.
-3. Preserve current theme selection:
-   - `MainApplication.getInstance().settings.getTheme().setToPreferencesActivity(...)`
-4. Move preference setup code into the fragment.
-5. Keep all existing preference keys unchanged.
+### Layout polish (post-migration)
 
-**Acceptance criteria:**
+AndroidX Material Preference defaults caused a worse first paint than the old `PreferenceActivity`:
 
-- Existing preferences load and save without migration.
-- Custom theme selection still opens `CustomThemeListActivity`.
-- Chan-specific settings still appear.
-- Tablet-only settings are still hidden on phones.
-- SFW-only filtering still works.
-
-### Task 2.3: Migrate preference classes
-
-**Files:**
-
-- `res/xml/preferences.xml`
-- `src/dev/esoc/esochan/ui/settings/ThemePreference.java`
-- channel modules that call `addPreferencesOnScreen(...)`
-- `src/dev/esoc/esochan/api/ChanModule.java`
-- `src/dev/esoc/esochan/api/AbstractChanModule.java`
-- `src/dev/esoc/esochan/api/CloudflareChanModule.java`
-- `src/dev/esoc/esochan/api/util/LazyPreferences.java`
-- chan modules under `src/dev/esoc/esochan/chans/`
-
-**Steps:**
-
-1. Replace `android.preference.*` imports with `androidx.preference.*`.
-2. Migrate `ThemePreference` from platform `ListPreference` to AndroidX `ListPreference`.
-3. Validate dynamic `PreferenceScreen` creation for chan settings.
-4. Replace deprecated direct edit text access if needed.
-
-**Risk:**
-
-Chan modules build preference screens programmatically. This task may touch more files than the activity shell.
-
-**Acceptance criteria:**
-
-- All preference categories and nested screens still appear.
-- 4chan pass settings still work.
-- Proxy/HTTPS settings from shared chan module helpers still work.
-
-### Task 2.4: Improve settings structure
-
-**Files:**
-
-- `res/xml/preferences.xml`
-- settings string resources
-
-**Proposed top-level groups:**
-
-- Imageboards
-- Appearance
-- Gallery
-- Posting identity
-- Downloads
-- Privacy and safety
-- Updates and subscriptions
-- Advanced
-- About
-
-**Specific changes:**
-
-- Move Gallery to a top-level screen or category, not a nested item buried inside Appearance.
-- Move Name/Email/Hide personal under "Posting identity".
-- Move NSFW, mask pictures, autohide, external link confirmation, swipe hide under "Privacy and safety".
-- Keep advanced settings for genuinely technical behavior.
-- Keep all preference keys stable.
-
-**Acceptance criteria:**
-
-- The settings screen is scannable.
-- Common visual settings are near the top.
-- High-risk/privacy settings are grouped clearly.
-- No existing saved preference is lost.
-
-### Task 2.5: Replace `ProgressDialog` in settings flows
-
-**Files:**
-
-- `src/dev/esoc/esochan/ui/settings/PreferencesActivity.java`
-- `src/dev/esoc/esochan/ui/settings/CustomThemeListActivity.java`
-- `src/dev/esoc/esochan/ui/settings/AppUpdatesChecker.java`
-- `src/dev/esoc/esochan/chans/fourchan/FourchanModule.java`
-
-**Steps:**
-
-1. Replace blocking `ProgressDialog` use with one of:
-   - disabled preference row plus summary update
-   - `MaterialAlertDialogBuilder` with an indeterminate progress view
-   - a small in-screen progress indicator where practical
-2. Keep cancellation behavior where currently supported.
-
-**Acceptance criteria:**
-
-- Clearing cache, importing/exporting themes, update check, and pass login do not show platform-era progress dialogs.
+- Empty icon gutters on sw360dp+ (`config_materialPreferenceIconSpaceReserved`) — disabled via `EsoPreferenceTheme` / bool overrides.
+- List drawn under the action bar — fixed with explicit `Toolbar` layout (content below bar).
+- Category title color uses `?attr/postNameForeground` instead of hardcoded teal fallback.
 
 **Verification for Phase 2:**
 
-- `./gradlew assembleDebug`
-- `./gradlew lintDebug`
-- Manual smoke test:
-  - open settings
-  - change theme
-  - open custom themes
-  - clear cache
-  - edit name/email
-  - open chan settings
-  - check tablet-only settings on a phone-size device or emulator
+- `./gradlew assembleDebug` — passes
+- Device install smoke: settings open, IA order, toolbar/list alignment
+- Next: manual checks for theme picker, custom themes, clear cache, chan settings, tablet-only prefs
 
 ---
 

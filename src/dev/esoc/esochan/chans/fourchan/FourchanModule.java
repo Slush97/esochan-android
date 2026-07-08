@@ -34,22 +34,24 @@ import dev.esoc.esochan.http.HttpHeader;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.preference.Preference;
-import android.preference.PreferenceGroup;
-import android.preference.PreferenceScreen;
+
+import androidx.preference.Preference;
+import androidx.preference.PreferenceGroup;
+import androidx.preference.PreferenceScreen;
 import androidx.core.content.res.ResourcesCompat;
+
 import android.text.Html;
 import android.text.InputType;
 import android.webkit.WebView;
 import android.widget.Toast;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.CloudflareChanModule;
+import dev.esoc.esochan.ui.settings.SettingsProgress;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
 import dev.esoc.esochan.api.interfaces.ProgressListener;
 import dev.esoc.esochan.api.models.BoardModel;
@@ -124,6 +126,7 @@ public class FourchanModule extends CloudflareChanModule {
         final Context context = preferenceGroup.getContext();
         PreferenceScreen passScreen = preferenceGroup.getPreferenceManager().createPreferenceScreen(context);
         passScreen.setTitle("4chan pass");
+        passScreen.setKey(getSharedKey("PREF_KEY_PASS_SCREEN"));
         Preference passTokenPreference = new Preference(context);
         passTokenPreference.setTitle("Token");
         passTokenPreference.setSummary(maskCredential(SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_TOKEN))));
@@ -185,16 +188,14 @@ public class FourchanModule extends CloudflareChanModule {
                 final String pin = SecurePreferences.INSTANCE.get(getSharedKey(PREF_KEY_PASS_PIN));
                 final String authUrl = "https://sys.4chan.org/auth"; //only https
                 final CancellableTask passAuthTask = new CancellableTask.BaseCancellableTask();
-                final ProgressDialog passAuthProgressDialog = new ProgressDialog(context);
-                passAuthProgressDialog.setMessage("Logging in");
-                passAuthProgressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        passAuthTask.cancel();
-                    }
-                });
-                passAuthProgressDialog.setCanceledOnTouchOutside(false);
-                passAuthProgressDialog.show();
+                final androidx.appcompat.app.AlertDialog passAuthProgressDialog = SettingsProgress.show(context,
+                        "Logging in",
+                        new DialogInterface.OnCancelListener() {
+                            @Override
+                            public void onCancel(DialogInterface dialog) {
+                                passAuthTask.cancel();
+                            }
+                        });
                 Async.runAsync(new Runnable() {
                     @Override
                     public void run() {
@@ -243,7 +244,14 @@ public class FourchanModule extends CloudflareChanModule {
                         } catch (Exception e) {
                             showToast(e.getMessage() == null ? resources.getString(R.string.error_unknown) : e.getMessage());
                         } finally {
-                            passAuthProgressDialog.dismiss();
+                            if (context instanceof Activity) {
+                                ((Activity) context).runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        passAuthProgressDialog.dismiss();
+                                    }
+                                });
+                            }
                         }
                     }
                     private void showToast(final String message) {

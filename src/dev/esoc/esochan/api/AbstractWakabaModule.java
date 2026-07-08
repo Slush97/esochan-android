@@ -42,7 +42,7 @@ import dev.esoc.esochan.http.streamer.HttpStreamer;
 import dev.esoc.esochan.http.streamer.HttpWrongStatusCodeException;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.preference.PreferenceGroup;
+import androidx.preference.PreferenceGroup;
 
 public abstract class AbstractWakabaModule extends CloudflareChanModule {
     

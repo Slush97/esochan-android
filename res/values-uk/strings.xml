@@ -432,8 +432,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="pref_cat_appearance">Вигляд</string>
     <string name="pref_cat_advanced">Різне</string>
     <string name="pref_cat_date_time">Дата й час</string>
-    <string name="pref_cat_personal">Особисте</string>
+    <string name="pref_cat_personal">Ідентичність при постінгу</string>
     <string name="pref_cat_downloads">Звантаження</string>
+    <string name="pref_cat_privacy">Приватність і безпека</string>
+    <string name="pref_cat_updates">Оновлення й підписки</string>
     <string name="pref_cat_autoupdate">Автооновлення</string>
     <string name="pref_cat_subscriptions">Відстеження відповідей</string>
     <string name="pref_cat_cache">Кеш</string>

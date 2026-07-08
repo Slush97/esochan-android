@@ -33,7 +33,8 @@ import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.api.util.ChanModels;
 
 import android.graphics.drawable.Drawable;
-import android.preference.PreferenceGroup;
+
+import androidx.preference.PreferenceGroup;
 
 /**
  * Интерфейс модуля, осуществляющего все взаимодействия с чаном (имиджбордой)
