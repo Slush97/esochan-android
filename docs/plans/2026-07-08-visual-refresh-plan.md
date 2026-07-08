@@ -611,21 +611,16 @@ AndroidX Material Preference defaults caused a worse first paint than the old `P
 
 ## Suggested Commit Order
 
-1. Baseline hygiene:
-   - `GalleryActivity.onActivityResult` super call
-   - Gradle archive name warning
-2. Icon foundation:
-   - vector assets
-   - tint attrs
-   - theme mapping
-3. Programmatic menu icon migration.
-4. Launcher/adaptive icon.
-5. Remove old UI icon assets.
-6. Settings shell migration to AndroidX Preference.
-7. Settings IA and ProgressDialog cleanup.
-8. New-tab and sidebar polish.
-9. Board/gallery control polish.
-10. Resource cleanup and lint baseline cleanup.
+1. Baseline hygiene — Done
+2. Icon foundation — Done
+3. Programmatic menu icon migration — Done
+4. Launcher/adaptive icon — Done
+5. Remove old UI icon assets — Done
+6. Settings shell migration to AndroidX Preference — Done
+7. Settings IA, ProgressDialog cleanup, layout polish — Done
+8. New-tab and sidebar polish — **Next**
+9. Board/gallery control polish
+10. Resource cleanup and lint baseline cleanup
 
 ---
 
@@ -636,8 +631,8 @@ The visual refresh can be considered complete when:
 - No visible menu/action icon uses `android.R.drawable`.
 - No duplicated light/dark UI icon PNGs remain for app chrome.
 - The launcher uses mipmap/adaptive icon resources.
-- Settings no longer use `PreferenceActivity` or `android.preference.*`.
-- Common settings are grouped into scannable sections.
+- Settings no longer use `PreferenceActivity` or `android.preference.*`. — Done (Phase 2)
+- Common settings are grouped into scannable sections. — Done (Phase 2)
 - New-tab and sidebar controls use the same icon/tint/control language as board/gallery.
 - `./gradlew assembleDebug` passes.
 - `./gradlew lintDebug` passes or only pre-existing, intentionally baselined issues remain.
