@@ -261,8 +261,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="postform_cannot_attach">Прикріпити файл не можна</string>
     <string name="postform_required_file">Додайте файл, щоб створити тред</string>
     <string name="postform_empty_comment">Напишіть пост</string>
-    <string name="postform_attachment_size_format">%1$s КБ, %2$dx%3$d</string>
-    <string name="postform_attachment_size_format_no_image">%1$s КБ</string>
+    <string name="postform_attachment_size_format">%1$d КБ, %2$dx%3$d</string>
+    <string name="postform_attachment_size_format_no_image">%1$d КБ</string>
     
     <string name="posting_post">Триває надсилання</string>
     <string name="posting_post_format">до треду /%2$s/ %3$s (%1$s)</string>

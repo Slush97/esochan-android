@@ -260,8 +260,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="postform_cannot_attach">Cannot attach file</string>
     <string name="postform_required_file">Attach a file to create a new thread</string>
     <string name="postform_empty_comment">Write a comment</string>
-    <string name="postform_attachment_size_format">%1$s KB, %2$dx%3$d</string>
-    <string name="postform_attachment_size_format_no_image">%1$s KB</string>
+    <string name="postform_attachment_size_format">%1$d KB, %2$dx%3$d</string>
+    <string name="postform_attachment_size_format_no_image">%1$d KB</string>
     
     <string name="posting_post">Sending a Post</string>
     <string name="posting_post_format">in thread /%2$s/ %3$s (%1$s)</string>
