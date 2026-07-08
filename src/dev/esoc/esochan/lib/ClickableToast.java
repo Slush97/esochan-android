@@ -26,6 +26,8 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.ContextCompat;
+
 public class ClickableToast extends FrameLayout {
     private static final String TAG = "ClickableToast";
     
@@ -56,6 +58,7 @@ public class ClickableToast extends FrameLayout {
     
     @Override
     public void onAttachedToWindow(){
+        super.onAttachedToWindow();
         WindowManager.LayoutParams params = getWmParams();
         try{
             this.windowManager.updateViewLayout(this, params);
@@ -72,7 +75,7 @@ public class ClickableToast extends FrameLayout {
     public void show(){
         WindowManager.LayoutParams params = getWmParams();
         this.windowManager.addView(this, params);
-        getContext().registerReceiver(dismissReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+        ContextCompat.registerReceiver(getContext(), dismissReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS), ContextCompat.RECEIVER_NOT_EXPORTED);
     }
     
     public void show(final int duration){
