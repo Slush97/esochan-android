@@ -57,87 +57,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <!-- domains -->
-                <data android:host="iichan.hk" />
-                <data android:host="www.iichan.hk" />
-                <data android:host="hatsune.ru" />
-                <data android:host="nowere.net" />
-                <data android:host="www.nowere.net" />
-                <data android:host="owlchan.ru" />
-                <data android:host="www.owlchan.ru" />
-                
-                <data android:host="horochan.ru" />
-                
-                <data android:host="allchan.su" />
-                <data android:host="www.allchan.su" />
-                
-                <data android:host="420chan.org" />
-                <data android:host="boards.420chan.org" />
-                
-                <data android:host="2-chru.net" />
-                <data android:host="2chru.net" />
-                <data android:host="dmirrgetyojz735v.onion" />
-                <data android:host="www.2-chru.net" />
-                <data android:host="www.2chru.net" />
-                <data android:host="www.dmirrgetyojz735v.onion" />
-                
-                <data android:host="uchan.to" />
-                <data android:host="uchan.org.ua" />
-                
-                <data android:host="sich.co.ua" />
-                
-                <data android:host="syn-ch.com" />
-                <data android:host="syn-ch.org" />
-                <data android:host="syn-ch.ru" />
-                <data android:host="syn-ch.com.ua" />
-                
-                <data android:host="inach.org" />
-                <data android:host="www.inach.org" />
-                
-                <data android:host="claire.ws" />
-                <data android:host="www.claire.ws" />
-                
-                <data android:host="kurisa.ch" />
-                <data android:host="www.kurisa.ch" />
-                
-                <data android:host="10ch.ru" />
-                <data android:host="www.10ch.ru" />
-                
-                <data android:host="haruhichan.ru" />
-                
-                <data android:host="chuck.dfwk.ru" />
-                
                 <data android:host="4chan.org" />
                 <data android:host="www.4chan.org" />
                 <data android:host="boards.4chan.org" />
-                
-                <data android:host="pl.vichan.net" />
-                
-                <data android:host="samachan.org" />
-                <data android:host="www.samachan.org" />
-
-                <data android:host="lainchan.org" />
-                <data android:host="www.lainchan.org" />
-                
-                <data android:host="dva-ch.net" />
-                
-                <data android:host="02ch.su" />
-                
-                <data android:host="tohno-chan.com" />
-                <data android:host="www.tohno-chan.com" />
-                
-                <data android:host="anon.fm" />
-                
-                <data android:host="2ch.hk" />
-                <data android:host="www.2ch.hk" />
-                <data android:host="2ch.pm" />
-                <data android:host="2-ch.so" />
-                <data android:host="2ch.re" />
-                <data android:host="2ch.tf" />
-                <data android:host="2ch.wf" />
-                <data android:host="2ch.yt" />
-                
-                <data android:host="arhivach.org" />
-                <data android:host="www.arhivach.org" />
                 <!-- end of domains -->
             </intent-filter>
             <intent-filter>

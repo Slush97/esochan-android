@@ -1,8 +1,6 @@
 # esochan
 
-esochan is an Android imageboard client, forked from [Overchan Android](https://github.com/miku-nyan/Overchan-Android).
-
-[Supported Imageboards](Imageboards.md)
+esochan is a 4chan client for Android, forked from [Overchan Android](https://github.com/miku-nyan/Overchan-Android).
 
 ## Building
 

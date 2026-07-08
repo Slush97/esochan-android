@@ -34,7 +34,7 @@ import dev.esoc.esochan.cache.PagesCache;
 import dev.esoc.esochan.cache.Serializer;
 import dev.esoc.esochan.http.client.ExtendedTrustManager;
 import dev.esoc.esochan.http.streamer.HttpStreamer;
-import dev.esoc.esochan.lib.org_json.JSONArray;
+import org.json.JSONArray;
 import dev.esoc.esochan.ui.Database;
 import dev.esoc.esochan.ui.downloading.DownloadingLocker;
 import dev.esoc.esochan.ui.presentation.Subscriptions;
@@ -71,18 +71,6 @@ public class MainApplication extends Application {
     
     private static final String[] MODULES = new String[] {
             "dev.esoc.esochan.chans.fourchan.FourchanModule",
-            "dev.esoc.esochan.chans.cirno.CirnoModule",
-            "dev.esoc.esochan.chans.cirno.NowereModule",
-            "dev.esoc.esochan.chans.horochan.HorochanModule",
-            "dev.esoc.esochan.chans.sich.SichModule",
-            "dev.esoc.esochan.chans.dvachnet.DvachnetModule",
-            "dev.esoc.esochan.chans.synch.SynchModule",
-            "dev.esoc.esochan.chans.chan10.Chan10Module",
-            "dev.esoc.esochan.chans.lainchan.LainModule",
-            "dev.esoc.esochan.chans.tohnochan.TohnoChanModule",
-            "dev.esoc.esochan.chans.dfwk.DFWKModule",
-            "dev.esoc.esochan.chans.anonfm.AnonFmModule",
-            "dev.esoc.esochan.chans.makaba.MakabaModule",
     };
     
     private static MainApplication instance;
