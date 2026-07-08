@@ -1,23 +1,26 @@
-/* esochan — classic Yotsuba B imageboard styling (nostalgic, light-only by design) */
+/* esochan — normal landing layout in classic Yotsuba B imageboard styling (light-only by design) */
 
 :root {
   color-scheme: light;
 
   --bg: #eef2ff;          /* Yotsuba B page */
-  --reply-bg: #d6daf0;    /* reply post highlight */
-  --reply-border: #b7c5d9;
+  --card: #d6daf0;        /* post-blue card */
+  --card-border: #b7c5d9;
   --nav-bg: #d6daf0;
   --ink: #000000;
-  --title-red: #af0a0f;   /* board banner */
-  --subject: #0f0c5d;     /* navy subject */
-  --name: #117743;        /* poster name green */
+  --ink-soft: #707070;
+  --title-red: #af0a0f;
+  --subject: #0f0c5d;     /* navy */
+  --name: #117743;        /* poster green */
   --green: #789922;       /* greentext */
   --link: #34345c;
   --link-hover: #dd0000;
-  --info: #707070;
 
   --font: arial, helvetica, sans-serif;
   --font-title: "Tahoma", "Verdana", arial, sans-serif;
+  --font-mono: "Courier New", monospace;
+
+  --wrap: 940px;
 }
 
 * { box-sizing: border-box; }
@@ -27,170 +30,148 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 0 0 40px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 a { color: var(--link); text-decoration: underline; }
 a:hover { color: var(--link-hover); }
-:focus-visible { outline: 1px dotted var(--ink); outline-offset: 1px; }
+:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
 
-hr {
-  border: none;
-  border-top: 1px solid var(--reply-border);
-  margin: 8px 0;
-  clear: both;
-}
+hr { border: none; border-top: 1px solid var(--card-border); margin: 0; }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; }
 
 /* ---- top board bar ---- */
-.navbar {
-  background: var(--nav-bg);
-  border-bottom: 1px solid var(--reply-border);
-  font-size: 12px;
-  padding: 2px 6px;
-  line-height: 1.5;
-}
+.navbar { background: var(--nav-bg); border-bottom: 1px solid var(--card-border); font-size: 12px; }
+.navbar .wrap { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; padding-top: 3px; padding-bottom: 3px; }
 .navbar a { text-decoration: none; }
 .navbar a:hover { text-decoration: underline; }
-.navbar .right { float: right; }
-.navbar .brackets { color: var(--info); }
-@media (max-width: 620px) { .navbar .right { float: none; display: block; } }
+.navbar .boards { color: var(--ink); }
+.navbar .brackets { color: var(--ink-soft); }
+.navbar .right { margin-left: auto; }
 
-/* ---- board banner ---- */
-.banner { text-align: center; padding: 8px 8px 2px; }
-.banner img.logo {
-  display: block; margin: 6px auto 4px;
-  width: 80px; height: 80px;
-  border: 1px solid var(--reply-border);
+/* ---- hero ---- */
+.hero { text-align: center; padding: 30px 16px 26px; }
+.hero img.logo {
+  width: 88px; height: 88px; display: block; margin: 0 auto 10px;
+  border: 1px solid var(--card-border);
 }
-.banner .boardTitle {
+.hero h1 {
   font-family: var(--font-title);
   color: var(--title-red);
   font-weight: bold;
-  font-size: 28px;
-  line-height: 1.1;
-  margin: 4px 0 0;
+  font-size: 42px;
+  margin: 0;
   letter-spacing: -0.5px;
 }
-.banner .boardSubtitle { color: var(--title-red); font-size: 12px; margin: 2px 0 4px; }
-.banner .pages { font-size: 12px; color: var(--info); }
+.hero .tagline { font-size: 17px; color: var(--subject); font-weight: bold; margin: 4px 0 0; }
+.hero .greentext { font-family: var(--font-mono); color: var(--green); font-size: 15px; margin: 10px 0 0; }
+.hero .meta { color: var(--ink-soft); font-size: 12px; font-family: var(--font-mono); margin: 6px 0 0; }
 
-.content { padding: 0 8px; }
-
-/* ---- shared post pieces ---- */
-.file { font-size: 12px; margin: 4px 0 2px; }
-.file .fileText { color: var(--info); }
-.fileThumb { float: left; margin: 2px 20px 5px 0; }
-.fileThumb img, .thumbBox {
-  display: block;
-  border: none;
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--font); font-size: 15px; font-weight: bold; line-height: 1;
+  padding: 12px 22px; min-width: 172px;
+  text-decoration: none; border: 1px solid var(--card-border);
+  background: var(--card); color: var(--subject);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+  transition: background .12s ease, transform .04s ease, box-shadow .12s ease;
 }
-.thumbBox {
-  border: 1px solid var(--reply-border);
-  background: #fff;
+.btn:hover { background: #c6cbe9; color: var(--subject); text-decoration: none; }
+.btn:active { transform: translateY(1px); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .22); }
+.btn svg { flex: none; width: 18px; height: 18px; }
+.btn .sub { font-weight: normal; font-family: var(--font-mono); font-size: 11px; opacity: .8; }
+
+.btn.primary { background: var(--title-red); border-color: #7a0709; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
+.btn.primary:hover { background: #8f080c; color: #fff; }
+.btn.primary:active { box-shadow: inset 0 1px 4px rgba(0, 0, 0, .4); }
+
+.btn.github { background: #2c2c52; border-color: #1c1c3a; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+.btn.github:hover { background: #3a3a66; color: #fff; }
+.btn.github .sub { color: #b9bbe0; opacity: 1; }
+
+/* ---- sections ---- */
+section { padding: 26px 0; border-top: 1px solid var(--card-border); }
+.sectionTitle {
+  font-family: var(--font-title);
+  color: var(--title-red);
+  font-weight: bold;
+  font-size: 22px;
+  margin: 0 0 4px;
 }
+.sectionTitle::before { content: ">> "; color: var(--ink-soft); font-family: var(--font-mono); font-size: 15px; }
+.sectionLede { color: var(--ink); margin: 0 0 18px; max-width: 62ch; }
 
-.postInfo { font-size: 12px; margin-bottom: 2px; }
-.postInfo .subject { color: var(--subject); font-weight: bold; }
-.postInfo .name { color: var(--name); font-weight: bold; }
-.postInfo .dateTime { color: var(--ink); }
-.postInfo .postNum a { color: var(--link); text-decoration: none; }
-.postInfo .postNum a:hover { color: var(--link-hover); }
-.postInfo .replyLink { color: var(--link); }
-.postInfo input[type=checkbox] { vertical-align: middle; margin: 0 2px 0 0; }
+/* ---- features grid ---- */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--card-border); padding: 12px 14px; }
+.card h3 { color: var(--subject); font-size: 15px; margin: 0 0 5px; }
+.card p { margin: 0; }
 
-blockquote.postMessage {
-  margin: 8px 0 8px 30px;
-  max-width: 66ch;
-  font-size: 13px;
-  word-wrap: break-word;
+/* ---- screenshots ---- */
+.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 620px; }
+figure.shot { margin: 0; text-align: center; }
+figure.shot .fileinfo { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); display: block; margin-bottom: 5px; text-align: left; }
+.phone {
+  position: relative; width: 100%; aspect-ratio: 9 / 19.5;
+  background: #0d0e0f; padding: 6px; border: 1px solid var(--card-border);
 }
-blockquote.postMessage p { margin: 0 0 8px; }
-blockquote.postMessage p:last-child { margin-bottom: 0; }
-.quote { color: var(--green); }              /* greentext */
-.backlink { color: var(--link); text-decoration: underline; font-size: 13px; }
-.backlink:hover { color: var(--link-hover); }
+.screen { width: 100%; height: 100%; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.screen .appbar { background: var(--title-red); height: 12%; }
+.screen .body { flex: 1; padding: 7px; display: flex; flex-direction: column; gap: 6px; }
+.screen .row { display: flex; gap: 5px; }
+.screen .thumb { width: 24px; height: 24px; background: var(--card); flex: none; }
+.screen .lines { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.screen .lines i { display: block; height: 5px; background: var(--card-border); }
+.screen .lines i.short { width: 55%; }
+.screen .lines i.green { background: #cfe0a8; width: 70%; }
+.screen .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 7px; }
+.screen .grid2 span { height: 30px; background: var(--card); }
+.ph-label { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 9px; color: var(--ink-soft); background: rgba(255,255,255,.85); padding: 1px 6px; border: 1px solid var(--card-border); }
+figcaption { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-top: 7px; }
 
-/* ---- OP post (thread root) ---- */
-.thread { margin: 6px 0; }
-.op .postInfo { display: inline; }
-.op blockquote.postMessage { margin-left: 30px; }
-
-/* ---- reply posts ---- */
-.replyContainer { display: block; margin: 4px 0; clear: both; }
-.replyContainer::before { content: ">>"; color: var(--reply-border); margin-right: 2px; font-size: 12px; }
-.post.reply {
-  display: inline-block;
-  background: var(--reply-bg);
-  border: 1px solid var(--reply-border);
-  padding: 2px 6px 6px;
-  max-width: 100%;
-  vertical-align: top;
-}
-.post.reply blockquote.postMessage { margin: 6px 0 4px 24px; }
-.post.reply h3 {
-  display: inline;
-  font-size: 13px;
-  color: var(--subject);
-  margin: 0;
-}
-
-/* ---- screenshots row (classic inline thumbs) ---- */
-.shots { margin: 6px 0 2px 24px; }
-.shots .shotThumb { display: inline-block; margin: 0 14px 10px 0; vertical-align: top; }
-.shots .fileText { font-size: 11px; color: var(--info); display: block; margin-bottom: 2px; }
-.phScreen {
-  width: 108px; height: 190px;
-  border: 1px solid var(--reply-border);
-  background: #fff;
-  overflow: hidden;
-}
-.phScreen .bar { height: 20px; background: var(--title-red); }
-.phScreen .strip { height: 8px; margin: 7px 6px 0; background: var(--reply-bg); }
-.phScreen .strip.g { background: #cfe0a8; width: 60%; }
-.phScreen .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 7px 6px; }
-.phScreen .grid span { height: 34px; background: var(--reply-bg); display: block; }
-.phScreen .label { text-align: center; font-size: 9px; color: var(--info); margin-top: 6px; }
-.shots figcaption { font-size: 11px; color: var(--info); text-align: center; }
-
-/* ---- board tag list ---- */
-.boardList { margin: 6px 0 2px 24px; font-size: 13px; }
-.boardList a { margin-right: 2px; }
-
-/* ---- download / code ---- */
-.getbox blockquote { margin-left: 24px; }
+/* ---- get it ---- */
+.getgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.card p + p { margin-top: 8px; }
 pre.code {
-  background: #f6f7ff;
-  border: 1px solid var(--reply-border);
-  padding: 8px 10px;
-  overflow-x: auto;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--ink);
-  margin: 6px 0 0;
+  background: #f6f7ff; border: 1px solid var(--card-border);
+  padding: 10px 12px; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--ink);
+  margin: 8px 0 0;
 }
-pre.code .c { color: var(--info); }
-.dl { font-weight: bold; }
+pre.code .c { color: var(--ink-soft); }
 
 /* ---- footer ---- */
-.footer {
-  text-align: center;
-  font-size: 11px;
-  color: var(--info);
-  margin-top: 18px;
-  padding: 0 8px;
-}
-.footer .nav { font-size: 12px; margin-bottom: 8px; }
+.footer { border-top: 1px solid var(--card-border); text-align: center; font-size: 12px; color: var(--ink-soft); padding: 20px 16px 28px; }
+.footer .nav { font-size: 13px; margin-bottom: 8px; }
 .footer .nav a { text-decoration: none; }
 .footer .nav a:hover { text-decoration: underline; }
-.footer .disclaimer { max-width: 70ch; margin: 8px auto 0; line-height: 1.5; }
-.footer .delform {
-  margin: 10px 0 12px;
-  font-size: 12px;
+.footer .delform { margin: 10px 0 12px; }
+.footer .delform input[type=text] { font-size: 12px; padding: 1px 3px; border: 1px solid var(--card-border); width: 90px; }
+.footer .disclaimer { max-width: 68ch; margin: 8px auto 0; line-height: 1.5; }
+
+/* ---- responsive ---- */
+@media (max-width: 700px) {
+  .shots { gap: 10px; max-width: 100%; }  /* keep 3 phones in one row, no orphan */
 }
-.footer .delform input[type=text] {
-  font-size: 12px; padding: 1px 3px;
-  border: 1px solid var(--reply-border); width: 90px;
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .wrap { padding: 0 14px; }
+  .grid, .getgrid { grid-template-columns: 1fr; }
+  .hero { padding: 24px 14px 22px; }
+  .hero h1 { font-size: 34px; }
+  section { padding: 22px 0; }
+  .navbar .wrap { row-gap: 2px; }
+}
+@media (max-width: 420px) {
+  .cta { flex-direction: column; align-items: stretch; }
+  .cta .btn { width: 100%; }
+  .sectionLede { font-size: 15px; }
+  .phone { padding: 4px; }
+  figure.shot .fileinfo, figcaption { font-size: 10px; }
+}
+@media (max-width: 340px) {
+  .navbar { font-size: 11px; }
 }
