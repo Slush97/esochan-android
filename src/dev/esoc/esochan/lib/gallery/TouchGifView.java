@@ -17,7 +17,7 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.widget.ImageView;
+import androidx.appcompat.widget.AppCompatImageView;
 import android.widget.OverScroller;
 import android.widget.Scroller;
 
@@ -28,7 +28,7 @@ import android.widget.Scroller;
  *
  */
 @TargetApi(Build.VERSION_CODES.FROYO)
-public class TouchGifView extends ImageView {
+public class TouchGifView extends AppCompatImageView {
 
     Matrix matrix = new Matrix();
 

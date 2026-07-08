@@ -10,9 +10,9 @@ import android.content.Context;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.view.View;
-import android.widget.ImageView;
+import androidx.appcompat.widget.AppCompatImageView;
 
-public class NonParentFocusableImageView extends ImageView {
+public class NonParentFocusableImageView extends AppCompatImageView {
     
     private final boolean needHack = false;
     

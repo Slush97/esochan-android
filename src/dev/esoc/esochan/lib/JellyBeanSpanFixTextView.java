@@ -27,7 +27,7 @@ import android.content.Context;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.util.AttributeSet;
-import android.widget.TextView;
+import androidx.appcompat.widget.AppCompatTextView;
 
 /**
 * <p>
@@ -49,7 +49,7 @@ import android.widget.TextView;
 * 
 */
 @SuppressLint("WrongCall")
-public class JellyBeanSpanFixTextView extends TextView {
+public class JellyBeanSpanFixTextView extends AppCompatTextView {
 
     private static class FixingResult {
         public final boolean fixed;
