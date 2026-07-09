@@ -398,8 +398,8 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
         this.menu = menu;
         MenuItem itemUpdate = menu.add(Menu.NONE, R.id.menu_update, 1, R.string.menu_update);
         MenuItem itemSave = menu.add(Menu.NONE, R.id.menu_save_attachment, 2, R.string.menu_save_attachment);
-        itemUpdate.setIcon(ThemeUtils.getActionbarIcon(getTheme(), getResources(), R.attr.actionRefresh));
-        itemSave.setIcon(ThemeUtils.getActionbarIcon(getTheme(), getResources(), R.attr.actionSave));
+        itemUpdate.setIcon(ThemeUtils.getTintedIcon(getTheme(), getResources(), R.drawable.ic_action_refresh, R.attr.iconTint));
+        itemSave.setIcon(ThemeUtils.getTintedIcon(getTheme(), getResources(), R.drawable.ic_action_save, R.attr.iconTint));
         itemUpdate.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         itemSave.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         menu.add(Menu.NONE, R.id.menu_open_external, 3, R.string.menu_open).setIcon(

@@ -30,31 +30,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         android:layout_width="match_parent"
         android:layout_height="@dimen/panel_height"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:background="?attr/activityRootBackground"
+        android:paddingStart="@dimen/list_row_padding_horizontal_tight"
+        android:paddingEnd="@dimen/list_row_padding_horizontal_tight"
         android:visibility="gone" >
         <EditText
             android:id="@+id/board_search_field"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:minHeight="@dimen/panel_height"
             android:hint="@string/search_bar_hint"
-            android:singleLine="true" />
-        <ImageView
-            style="@style/SelectableItem"
+            android:singleLine="true"
+            android:background="@null"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:imeOptions="actionSearch"
+            android:inputType="text" />
+        <ImageButton
+            style="@style/Widget_Eso_IconButton"
             android:id="@+id/board_search_previous"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:padding="4dp"
             android:src="?attr/iconItemPrevious"
             app:tint="?attr/iconTint"
             android:contentDescription="@string/previous"
             android:visibility="gone" />
-        <ImageView
-            style="@style/SelectableItem"
+        <ImageButton
+            style="@style/Widget_Eso_IconButton"
             android:id="@+id/board_search_next"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:padding="4dp"
             android:src="?attr/iconItemNext"
             app:tint="?attr/iconTint"
             android:contentDescription="@string/next"
@@ -64,14 +67,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:minWidth="40dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="?attr/itemInfoForeground"
             android:visibility="gone" />
-        <ImageView
-            style="@style/SelectableItem"
+        <ImageButton
+            style="@style/Widget_Eso_IconButton"
             android:id="@+id/board_search_close"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:padding="4dp"
             android:src="?attr/iconBtnClose"
             app:tint="?attr/iconTint"
             android:contentDescription="@string/close" />
@@ -131,11 +135,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         android:layout_width="match_parent"
         android:layout_height="@dimen/panel_height"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:weightSum="8"
         android:background="?attr/activityRootBackground"
         android:visibility="gone" >
-        <ImageView
-            style="@style/SelectableItem"
+        <ImageButton
+            style="@style/Widget_Eso_IconButton"
             android:id="@+id/board_navigation_previous"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -143,7 +148,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:src="?attr/iconItemPrevious"
             app:tint="?attr/iconTint"
             android:scaleType="fitStart"
-            android:padding="4dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:contentDescription="@string/previous" />
         <TextView
             style="@style/SelectableItem"
@@ -152,9 +158,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:gravity="center"
+            android:minHeight="@dimen/panel_height"
             android:textAppearance="?android:attr/textAppearanceLarge" />
-        <ImageView
-            style="@style/SelectableItem"
+        <ImageButton
+            style="@style/Widget_Eso_IconButton"
             android:id="@+id/board_navigation_next"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -162,7 +169,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
             android:src="?attr/iconItemNext"
             app:tint="?attr/iconTint"
             android:scaleType="fitEnd"
-            android:padding="4dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:contentDescription="@string/next" />
     </LinearLayout>
     

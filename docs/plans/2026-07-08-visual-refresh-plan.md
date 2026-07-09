@@ -437,70 +437,34 @@ AndroidX Material Preference defaults caused a worse first paint than the old `P
 
 ## Phase 4 - Board and Gallery Polish
 
+**Status:** Done (2026-07-08)
+
 **Difficulty:** Medium
 
 **Goal:** Make the most-used content surfaces feel less patched together while preserving behavior.
 
-### Task 4.1: Search and navigation bars
+### Task 4.1: Search and navigation bars — Done
 
-**Files:**
+- `panel_height` 40dp → 48dp; shared `Widget_Eso_IconButton` (48dp borderless).
+- Board search prev/next/close and page nav use `ImageButton` + theme icons/`iconTint`.
+- Search field: transparent bg, horizontal padding, `actionSearch` IME.
 
-- `res/layout/board_fragment.xml`
-- `src/dev/esoc/esochan/ui/presentation/BoardFragment.java`
+### Task 4.2: Post item action polish — Done
 
-**Steps:**
+- Bottom bar: replies text + per-post reply `ImageButton` (`actionAddPost` + tint).
+- Reply shown for live non-readonly threads only; hidden in quote popups.
+- Popup reparent uses `post_bottom_bar` so replies stay scrollable.
 
-1. Apply shared icons and tint to search close/previous/next.
-2. Normalize `panel_height` if current 40dp controls feel cramped.
-3. Replace legacy `ImageView` action controls with Material icon buttons if compatible.
-4. Keep existing search behavior unchanged.
+### Task 4.3: Gallery controls — Done
 
-**Acceptance criteria:**
-
-- Search bar controls look consistent with toolbar/menu icons.
-- Touch targets remain large enough.
-
-### Task 4.2: Post item action polish
-
-**Files:**
-
-- `res/layout/post_item_layout.xml`
-- `src/dev/esoc/esochan/ui/presentation/BoardFragment.java`
-
-**Steps:**
-
-1. Apply shared reply icon and tint.
-2. Review bottom row spacing around replies and reply button.
-3. Avoid changing post parsing, span rendering, or thumbnail layout in this phase.
-
-**Acceptance criteria:**
-
-- Reply action is visually aligned with the rest of the app.
-- Post density remains appropriate for imageboard browsing.
-
-### Task 4.3: Gallery controls
-
-**Files:**
-
-- `res/layout/gallery_layout.xml`
-- `res/layout/gallery_layout_fullscreen.xml`
-- `src/dev/esoc/esochan/ui/gallery/GalleryActivity.java`
-
-**Steps:**
-
-1. Apply shared previous/next/save/refresh icons.
-2. Replace framework share/search menu icons.
-3. Confirm fullscreen controls remain visible on dark and light themes.
-
-**Acceptance criteria:**
-
-- Gallery action icons are coherent with board and main menu icons.
-- Fullscreen controls have sufficient contrast.
+- Gallery (normal + fullscreen) prev/next use shared icon buttons and tint.
+- Menu save/refresh/share/search/browser use `getTintedIcon` + shared vectors.
+- Nav info uses `textColorPrimary` for contrast on themed bars.
 
 **Verification for Phase 4:**
 
 - `./gradlew assembleDebug`
-- Manual smoke test:
+- Manual smoke still needed:
   - board page refresh
   - search in board
   - reply button
@@ -580,8 +544,8 @@ AndroidX Material Preference defaults caused a worse first paint than the old `P
 6. Settings shell migration to AndroidX Preference — Done
 7. Settings IA, ProgressDialog cleanup, layout polish — Done
 8. New-tab and sidebar polish — Done
-9. Board/gallery control polish — **Next**
-10. Resource cleanup and lint baseline cleanup
+9. Board/gallery control polish — Done
+10. Resource cleanup and lint baseline cleanup — **Next**
 
 ---
 
@@ -595,6 +559,7 @@ The visual refresh can be considered complete when:
 - Settings no longer use `PreferenceActivity` or `android.preference.*`. — Done (Phase 2)
 - Common settings are grouped into scannable sections. — Done (Phase 2)
 - New-tab and sidebar controls use the same icon/tint/control language as board/gallery. — Done (Phase 3)
+- Board search/nav, post reply, and gallery controls use shared icon buttons and tint. — Done (Phase 4)
 - `./gradlew assembleDebug` passes.
 - `./gradlew lintDebug` passes or only pre-existing, intentionally baselined issues remain.
 - Manual smoke tests pass for:

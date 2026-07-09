@@ -146,7 +146,8 @@ public class AsyncImageGetter implements HtmlParser.ImageGetter {
                     public void run() {
                         View v = view.get();
                         if (v == null) return;
-                        v.invalidate();    
+                        // Align redraw with the next frame instead of forcing a mid-scroll invalidate.
+                        v.postInvalidateOnAnimation();
                     }
                 });
             }
