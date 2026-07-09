@@ -83,6 +83,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="tabs_newtab">Neuer Tab</string>
     <string name="tabs_favorites">Favoriten</string>
     <string name="tabs_history">Browserverlauf</string>
+    <string name="tabs_saved">Gespeichert</string>
+    <string name="tabs_activity">Aktivität</string>
+    <string name="saved_empty">Keine gespeicherten Threads</string>
+    <string name="activity_empty">Noch keine verfolgten Posts.\nPoste mit aktivierter Option „Eigene Posts abonnieren“, oder lange auf einen Post drücken und Abonnieren.</string>
+    <string name="activity_section_threads">Threads, in denen du gepostet hast</string>
+    <string name="activity_section_posts">Verfolgte Posts</string>
+    <string name="activity_post_title">/%1$s/%2$s · &gt;&gt;%3$s</string>
+    <string name="activity_thread_title">/%1$s/%2$s</string>
+    <string name="menu_clear_saved">Gespeicherte löschen</string>
+    <string name="menu_clear_activity">Aktivität löschen</string>
+    <string name="context_menu_remove_saved">Aus Gespeicherten entfernen</string>
+    <string name="context_menu_remove_subscription">Deabonnieren</string>
+    <string name="context_menu_remove_thread_subscriptions">Thread deabonnieren</string>
     
     <string name="tabs_tracker_title">Auto Update</string>
     <string name="tabs_tracker_title_unread">Neue Posts</string>
@@ -346,6 +359,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="subscriptions_notification_text_format">in Thread: %s</string>
     <string name="subscriptions_notification_text_multiple">in mehreren Threads</string>
     <string name="subscriptions_notification_text_more">+ %d mehr</string>
+    <string name="subscriptions_reply_toast">Neue Antwort in %s — tippen zum Öffnen</string>
+    <string name="subscriptions_reply_toast_here">Neue Antwort auf deinen Post — tippen zum Springen</string>
     
     <string name="notification_url_copied">Adresse ist in die Zwischenablage kopiert\n%s</string>
     <string name="notification_post_not_found">Post ist nicht gefunden</string>

@@ -37,12 +37,14 @@ import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.http.interactive.InteractiveException;
 import dev.esoc.esochan.lib.FileDialogActivity;
 import dev.esoc.esochan.lib.UriFileUtils;
+import dev.esoc.esochan.ui.Clipboard;
 import dev.esoc.esochan.ui.downloading.DownloadStorage;
 import dev.esoc.esochan.ui.AppearanceUtils;
 import dev.esoc.esochan.ui.settings.ApplicationSettings;
 import dev.esoc.esochan.ui.theme.ThemeUtils;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
@@ -182,7 +184,7 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
             int reason = getIntent().getIntExtra(PostingService.EXTRA_RETURN_REASON, 0);
             switch (reason) {
                 case PostingService.REASON_ERROR:
-                    Toast.makeText(this, getIntent().getStringExtra(PostingService.EXTRA_RETURN_REASON_ERROR), Toast.LENGTH_LONG).show();
+                    showPostingError(getIntent().getStringExtra(PostingService.EXTRA_RETURN_REASON_ERROR));
                     break;
                 case PostingService.REASON_INTERACTIVE_EXCEPTION:
                     handleInteract((InteractiveException) getIntent().getSerializableExtra(PostingService.EXTRA_RETURN_REASON_INTERACTIVE_EXCEPTION));
@@ -191,6 +193,23 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
         }
         
         setCaptcha();
+    }
+
+    private void showPostingError(String errorMessage) {
+        final String details = errorMessage == null || errorMessage.length() == 0
+                ? getString(R.string.posting_error_default)
+                : errorMessage;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.posting_error)
+                .setMessage(details)
+                .setNeutralButton(R.string.posting_error_copy_details, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Clipboard.copyText(PostFormActivity.this, details);
+                    }
+                })
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
     
     @Override

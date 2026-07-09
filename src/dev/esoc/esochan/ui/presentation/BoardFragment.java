@@ -416,7 +416,8 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         });
 
         if (tabModel.type != TabModel.TYPE_LOCAL) {
-            viewModel.loadPage(forceUpdateFirstTime, false);
+            viewModel.loadPage(forceUpdateFirstTime, false,
+                    forceUpdateFirstTime ? startItem : null);
         } else {
             loadLocalTab(forceUpdateFirstTime);
         }
@@ -1215,6 +1216,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
      */
     private void handleContent(BoardUiState.Content content) {
         boolean isThreadPage = pageType == TYPE_POSTSLIST;
+        String expectPost = content.getExpectPostNumber();
         if (content.getCachedPresentationModel() != null) {
             // LRU cache hit — rebind transient fields
             presentationModel = content.getCachedPresentationModel();
@@ -1232,13 +1234,13 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                         Async.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                showContentInListView(content.getNeedUpdateAfter(), false);
+                                showContentInListView(content.getNeedUpdateAfter(), false, expectPost);
                             }
                         });
                     }
                 });
             } else {
-                showContentInListView(content.getNeedUpdateAfter(), false);
+                showContentInListView(content.getNeedUpdateAfter(), false, expectPost);
             }
         } else {
             // File cache hit or from-scratch network load — create new PresentationModel on background thread
@@ -1247,7 +1249,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 @Override
                 public void run() {
                     buildPresentationModelAndShow(content.getPage(), content.getNeedUpdateAfter(),
-                            content.getPutToFileCache(), isThreadPage, buildTask);
+                            content.getPutToFileCache(), isThreadPage, buildTask, expectPost);
                 }
             });
         }
@@ -1320,6 +1322,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                         }
                         String notification;
                         boolean toastToNewPosts = false;
+                        final String replyPostNumber = newSubscription;
                         if (isThreadPage) {
                             int newPostsCount = adapter.getCount() - itemsCountBefore;
                             if (newPostsCount <= 0) {
@@ -1330,15 +1333,25 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                                 toastToNewPosts = true;
                                 if (activity.isPaused()) {
                                     TabsTrackerService.setUnread();
-                                    if (newSubscription != null) {
-                                        TabsTrackerService.addSubscriptionNotification(tabModel.webUrl, newSubscription, tabModel.title);
+                                    if (replyPostNumber != null) {
+                                        TabsTrackerService.addSubscriptionNotification(tabModel.webUrl, replyPostNumber, tabModel.title);
                                     }
                                 }
                             }
                         } else {
                             notification = resources.getString(R.string.postslist_list_updated);
                         }
-                        if (toastToNewPosts) {
+                        if (replyPostNumber != null && !activity.isPaused()) {
+                            // Prefer a reply-specific toast over the generic new-posts toast when in-app.
+                            ClickableToast.showText(activity,
+                                    resources.getString(R.string.subscriptions_reply_toast_here),
+                                    new ClickableToast.OnClickListener() {
+                                        @Override
+                                        public void onClick() {
+                                            scrollToItem(replyPostNumber);
+                                        }
+                                    }, true);
+                        } else if (toastToNewPosts) {
                             ClickableToast.showText(activity, notification, new ClickableToast.OnClickListener() {
                                 @Override
                                 public void onClick() {
@@ -1380,6 +1393,11 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
      */
     private void buildPresentationModelAndShow(SerializablePage serializablePage, boolean needUpdateAfter,
             boolean putToFileCache, boolean isThreadPage, CancellableTask task) {
+        buildPresentationModelAndShow(serializablePage, needUpdateAfter, putToFileCache, isThreadPage, task, null);
+    }
+
+    private void buildPresentationModelAndShow(SerializablePage serializablePage, boolean needUpdateAfter,
+            boolean putToFileCache, boolean isThreadPage, CancellableTask task, String expectPostNumber) {
         presentationModel = new PresentationModel(
                 serializablePage,
                 settings.isLocalTime(),
@@ -1392,7 +1410,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         pagesCache.putPresentationModel(tabModel.hash, presentationModel, putToFileCache);
         if (task.isCancelled()) return;
         InternalBroadcasts.send(activity, BROADCAST_PAGE_LOADED);
-        toListView(needUpdateAfter, false);
+        toListView(needUpdateAfter, false, expectPostNumber);
     }
 
     /**
@@ -1400,11 +1418,14 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
      * Called from the UI thread.
      */
     private void showContentInListView(boolean needUpdateAfter, boolean silent) {
-        // Delegate to toListView which runs on background thread parts then posts to UI
+        showContentInListView(needUpdateAfter, silent, null);
+    }
+
+    private void showContentInListView(boolean needUpdateAfter, boolean silent, String expectPostNumber) {
         Async.runAsync(new Runnable() {
             @Override
             public void run() {
-                toListView(needUpdateAfter, silent);
+                toListView(needUpdateAfter, silent, expectPostNumber);
             }
         });
     }
@@ -1424,6 +1445,10 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
 
     /** @param needUpdateAfter - requires page refresh from network after display */
     private void toListView(final boolean needUpdateAfter, final boolean silent) {
+        toListView(needUpdateAfter, silent, null);
+    }
+
+    private void toListView(final boolean needUpdateAfter, final boolean silent, final String expectPostNumber) {
         if (presentationModel == null || presentationModel.presentationList == null) return;
         adapter = new PostsListAdapter(BoardFragment.this);
         if (presentationModel == null) return;
@@ -1565,7 +1590,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                         @Override
                         public void run() {
                             pullableLayout.setRefreshing(true);
-                            viewModel.loadPage(true, silent);
+                            viewModel.loadPage(true, silent, expectPostNumber);
                         }
                     });
                 }
@@ -2479,8 +2504,24 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
      * Обновить страницу
      */
     public void update() {
+        update(null);
+    }
+
+    /**
+     * Refresh the page. When {@code expectPostNumber} is set (after a successful post),
+     * skip If-Modified-Since and retry until that post appears in the thread JSON.
+     */
+    public void update(String expectPostNumber) {
+        if (expectPostNumber != null) {
+            startItem = expectPostNumber;
+            startItemTop = 0;
+        } else if (tabModel.startItemNumber != null && tabModel.forceUpdate) {
+            startItem = tabModel.startItemNumber;
+            startItemTop = tabModel.startItemTop;
+            expectPostNumber = tabModel.startItemNumber;
+        }
         pullableLayout.setRefreshing(true);
-        viewModel.loadPage(true, false);
+        viewModel.loadPage(true, false, expectPostNumber);
     }
 
     /**

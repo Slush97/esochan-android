@@ -87,6 +87,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="tabs_newtab">Новая вкладка</string>
     <string name="tabs_favorites">Избранное</string>
     <string name="tabs_history">История</string>
+    <string name="tabs_saved">Сохранённые</string>
+    <string name="tabs_activity">Активность</string>
+    <string name="saved_empty">Нет сохранённых тредов</string>
+    <string name="activity_empty">Пока нет отслеживаемых постов.\nПишите с включённой опцией «Подписываться на свои сообщения» или долгим нажатием на пост → Подписаться.</string>
+    <string name="activity_section_threads">Треды, в которых вы писали</string>
+    <string name="activity_section_posts">Отслеживаемые посты</string>
+    <string name="activity_post_title">/%1$s/%2$s · &gt;&gt;%3$s</string>
+    <string name="activity_thread_title">/%1$s/%2$s</string>
+    <string name="menu_clear_saved">Очистить сохранённые</string>
+    <string name="menu_clear_activity">Очистить активность</string>
+    <string name="context_menu_remove_saved">Удалить из сохранённых</string>
+    <string name="context_menu_remove_subscription">Отписаться</string>
+    <string name="context_menu_remove_thread_subscriptions">Отписаться от треда</string>
     
     <string name="tabs_tracker_title">Автообновление</string>
     <string name="tabs_tracker_title_unread">Есть новые сообщения</string>
@@ -353,6 +366,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="subscriptions_notification_text_format">в треде: %s</string>
     <string name="subscriptions_notification_text_multiple">в нескольких тредах</string>
     <string name="subscriptions_notification_text_more">+ %d ещё</string>
+    <string name="subscriptions_reply_toast">Новый ответ в %s — нажмите, чтобы открыть</string>
+    <string name="subscriptions_reply_toast_here">Новый ответ на ваш пост — нажмите, чтобы перейти</string>
     
     <string name="notification_url_copied">Адрес скопирован в буфер обмена\n%s</string>
     <string name="notification_post_not_found">Пост не найден</string>

@@ -19,6 +19,8 @@
 package dev.esoc.esochan.ui.posting;
 
 import dev.esoc.esochan.R;
+import dev.esoc.esochan.api.AbstractChanModule;
+import dev.esoc.esochan.api.ChanModule;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
 import dev.esoc.esochan.api.interfaces.ProgressListener;
 import dev.esoc.esochan.api.models.BoardModel;
@@ -256,6 +258,27 @@ public class PostingService extends Service {
             
             if (success && !isCancelled()) {
                 MainApplication.getInstance().draftsCache.remove(hash);
+                // Drop If-Modified-Since for this thread so the post-success refresh is not a 304.
+                try {
+                    String threadNumber = sendPostModel.threadNumber;
+                    ChanModule module = MainApplication.getInstance().getChanModule(sendPostModel.chanName);
+                    if (threadNumber == null && targetUrl != null && module != null) {
+                        try {
+                            UrlPageModel posted = module.parseUrl(targetUrl);
+                            if (posted != null && posted.type == UrlPageModel.TYPE_THREADPAGE) {
+                                threadNumber = posted.threadNumber;
+                            }
+                        } catch (Exception e) {
+                            Logger.e(TAG, e);
+                        }
+                    }
+                    if (threadNumber != null && module instanceof AbstractChanModule) {
+                        ((AbstractChanModule) module)
+                                .invalidateThreadPostsCache(sendPostModel.boardName, threadNumber);
+                    }
+                } catch (Exception e) {
+                    Logger.e(TAG, e);
+                }
                 Intent intentSuccess = new Intent(PostingService.this, MainActivity.class);
                 if (targetUrl == null) {
                     UrlPageModel model = new UrlPageModel();

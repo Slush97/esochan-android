@@ -26,6 +26,7 @@ dependencies {
     implementation libs.androidx.security.crypto
     implementation libs.androidx.preference
     implementation libs.material
+    testImplementation libs.junit
 }
 
 android {
@@ -54,6 +55,9 @@ android {
         res.srcDirs = ['res']
         assets.srcDirs = ['assets']
         jni.srcDirs = ['jni']
+    }
+    sourceSets.test {
+        java.srcDirs = ['test']
     }
     buildTypes.release {
         minifyEnabled true

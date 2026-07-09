@@ -48,6 +48,7 @@ import androidx.core.content.res.ResourcesCompat;
 import android.text.Html;
 import android.text.InputType;
 import android.widget.Toast;
+import dev.esoc.esochan.BuildConfig;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.CloudflareChanModule;
 import dev.esoc.esochan.ui.settings.SettingsProgress;
@@ -63,6 +64,7 @@ import dev.esoc.esochan.api.models.ThreadModel;
 import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.api.util.ChanModels;
 import dev.esoc.esochan.common.Async;
+import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.SecurePreferences;
 import dev.esoc.esochan.http.ExtendedMultipartBuilder;
 import dev.esoc.esochan.http.streamer.HttpRequestModel;
@@ -72,6 +74,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class FourchanModule extends CloudflareChanModule {
+    private static final String TAG = "FourchanModule";
+    private static final int POST_RESPONSE_CAPTURE_MAX_LENGTH = 12000;
+    private static final int POST_RESPONSE_CAPTURE_CHUNK_SIZE = 3000;
     
     static final String CHAN_NAME = "4chan.org";
     
@@ -87,8 +92,6 @@ public class FourchanModule extends CloudflareChanModule {
 
     private Map<String, BoardModel> boardsMap = null;
     
-    private static final Pattern ERROR_POSTING = Pattern.compile("<span id=\"errmsg\"(?:[^>]*)>(.*?)(?:</span>|<br)");
-    private static final Pattern SUCCESS_POSTING = Pattern.compile("<!-- thread:(\\d+),no:(\\d+) -->");
     private static final Pattern AUTH_HTML_ERROR = Pattern.compile(
             "(?:class=\"msg-error\"[^>]*>|<strong style=\"color: red; font-size: larger;\">)(.*?)</");
     
@@ -443,6 +446,28 @@ public class FourchanModule extends CloudflareChanModule {
         return Html.fromHtml(html).toString().trim();
     }
 
+    private static void logPostResponseForCapture(String response) {
+        if (!BuildConfig.DEBUG) return;
+        if (response == null) {
+            Logger.d(TAG, "4chan post response capture: null response");
+            return;
+        }
+        int loggedLength = Math.min(response.length(), POST_RESPONSE_CAPTURE_MAX_LENGTH);
+        int chunks = (loggedLength + POST_RESPONSE_CAPTURE_CHUNK_SIZE - 1) / POST_RESPONSE_CAPTURE_CHUNK_SIZE;
+        Logger.d(TAG, "4chan post response capture length=" + response.length()
+                + ", logged=" + loggedLength
+                + ", chunks=" + chunks);
+        for (int i = 0; i < chunks; i++) {
+            int start = i * POST_RESPONSE_CAPTURE_CHUNK_SIZE;
+            int end = Math.min(start + POST_RESPONSE_CAPTURE_CHUNK_SIZE, loggedLength);
+            Logger.d(TAG, "4chan post response capture [" + (i + 1) + "/" + chunks + "]: "
+                    + response.substring(start, end));
+        }
+        if (response.length() > loggedLength) {
+            Logger.d(TAG, "4chan post response capture truncated at " + loggedLength + " chars");
+        }
+    }
+
     private String extractPassIdFromCookieStore() {
         for (HttpCookie cookie : httpClient.getCookieStore().getCookies()) {
             if ("pass_id".equals(cookie.getName())) {
@@ -622,10 +647,20 @@ public class FourchanModule extends CloudflareChanModule {
         return result;
     }
     
+    private String threadJsonUrl(String boardName, String threadNumber) {
+        return (useHttps() ? "https://" : "http://") + "a.4cdn.org/" + boardName + "/thread/" + threadNumber + ".json";
+    }
+
+    @Override
+    public void invalidateThreadPostsCache(String boardName, String threadNumber) {
+        if (boardName == null || threadNumber == null) return;
+        HttpStreamer.getInstance().removeFromModifiedMap(threadJsonUrl(boardName, threadNumber));
+    }
+
     @Override
     public PostModel[] getPostsList(String boardName, String threadNumber, ProgressListener listener, CancellableTask task, PostModel[] oldList)
             throws Exception {
-        String url = (useHttps() ? "https://" : "http://") + "a.4cdn.org/" + boardName + "/thread/" + threadNumber + ".json";
+        String url = threadJsonUrl(boardName, threadNumber);
         JSONObject response = downloadJSONObject(url, oldList != null, listener, task);
         if (response == null) return oldList; //if not modified
         JSONArray posts = response.getJSONArray("posts");
@@ -701,22 +736,23 @@ public class FourchanModule extends CloudflareChanModule {
             checkCloudflareError(e, "https://4chan.org");
             throw e;
         }
-        Matcher errorMatcher = ERROR_POSTING.matcher(response);
-        if (errorMatcher.find()) {
-            throw new Exception(Html.fromHtml(errorMatcher.group(1)).toString());
+        logPostResponseForCapture(response);
+        FourchanPostResponse postResponse = FourchanPostResponse.parse(response);
+        if (postResponse.type() == FourchanPostResponse.Type.SERVER_ERROR) {
+            throw new Exception(postResponse.message());
         }
-        Matcher successMatcher = SUCCESS_POSTING.matcher(response);
-        if (successMatcher.find()) {
+        if (postResponse.type() == FourchanPostResponse.Type.SUCCESS) {
             UrlPageModel redirect = new UrlPageModel();
             redirect.chanName = CHAN_NAME;
             redirect.type = UrlPageModel.TYPE_THREADPAGE;
             redirect.boardName = model.boardName;
-            redirect.threadNumber = successMatcher.group(1);
-            redirect.postNumber = successMatcher.group(2);
+            redirect.threadNumber = postResponse.threadNumber();
+            redirect.postNumber = postResponse.postNumber();
             if (redirect.threadNumber.equals("0")) redirect.threadNumber = redirect.postNumber;
             return buildUrl(redirect);
         }
-        return null;
+        Logger.d(TAG, "Unexpected 4chan post response: " + postResponse.bodySnippet());
+        throw new Exception(postResponse.message());
     }
     
     @Override
@@ -729,9 +765,9 @@ public class FourchanModule extends CloudflareChanModule {
         HttpRequestModel request = HttpRequestModel.builder().setPOST(postEntityBuilder.build())
                 .setCustomHeaders(getPostHeaders(model.boardName, "https://boards.4chan.org")).build();
         String response = HttpStreamer.getInstance().getStringFromUrl(url, request, httpClient, listener, task, false);
-        Matcher errorMatcher = ERROR_POSTING.matcher(response);
-        if (errorMatcher.find()) {
-            throw new Exception(Html.fromHtml(errorMatcher.group(1)).toString());
+        String errorMessage = FourchanPostResponse.errorMessage(response);
+        if (errorMessage != null) {
+            throw new Exception(errorMessage);
         }
         return null;
     }

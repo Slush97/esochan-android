@@ -11,7 +11,8 @@ sealed interface BoardUiState {
         val cachedPresentationModel: PresentationModel?,
         val needUpdateAfter: Boolean,
         val putToFileCache: Boolean,
-        val itemsCountBefore: Int
+        val itemsCountBefore: Int,
+        val expectPostNumber: String? = null
     ) : BoardUiState
 
     data class Updated(

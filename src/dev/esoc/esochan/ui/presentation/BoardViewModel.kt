@@ -4,8 +4,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import dev.esoc.esochan.api.AbstractChanModule
 import dev.esoc.esochan.api.ChanModule
 import dev.esoc.esochan.api.interfaces.CancellableTask
+import dev.esoc.esochan.api.models.UrlPageModel
 import dev.esoc.esochan.api.util.PageLoaderFromChan
 import dev.esoc.esochan.cache.SerializablePage
 import dev.esoc.esochan.common.MainApplication
@@ -15,11 +18,11 @@ import dev.esoc.esochan.ui.tabs.TabModel
 import dev.esoc.esochan.ui.tabs.TabsTrackerService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
-import androidx.lifecycle.viewModelScope
 import kotlin.coroutines.resume
 
 class BoardViewModel(
@@ -32,6 +35,10 @@ class BoardViewModel(
     companion object {
         const val TYPE_THREADSLIST = 0
         const val TYPE_POSTSLIST = 1
+
+        /** Attempts to find a just-posted reply while the CDN catches up. */
+        private const val POST_REFRESH_ATTEMPTS = 5
+        private const val POST_REFRESH_DELAY_MS = 1000L
     }
 
     private val pagesCache = MainApplication.getInstance().pagesCache
@@ -58,6 +65,14 @@ class BoardViewModel(
     var currentPage: SerializablePage? = null
 
     fun loadPage(forceUpdate: Boolean, silent: Boolean) {
+        loadPage(forceUpdate, silent, null)
+    }
+
+    /**
+     * @param expectPostNumber when set (after a successful post), skip If-Modified-Since
+     *                         and retry until this post appears or attempts are exhausted.
+     */
+    fun loadPage(forceUpdate: Boolean, silent: Boolean, expectPostNumber: String?) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch(Dispatchers.IO) {
             // Wait for TabsTrackerService to finish updating this tab
@@ -69,7 +84,8 @@ class BoardViewModel(
             val tryCache = !isListLoaded && (!forceUpdate || isThreadPage)
 
             if (tryCache) {
-                // Try LRU cache first
+                // Try LRU cache first. Network refresh (if forceUpdate) is triggered by the
+                // fragment via needUpdateAfter so the list can paint from cache first.
                 val cached = pagesCache.getPresentationModel(tabHash)
                 if (cached != null) {
                     isListLoaded = true
@@ -80,10 +96,10 @@ class BoardViewModel(
                             cachedPresentationModel = cached,
                             needUpdateAfter = forceUpdate,
                             putToFileCache = false,
-                            itemsCountBefore = 0
+                            itemsCountBefore = 0,
+                            expectPostNumber = if (forceUpdate) expectPostNumber else null
                         )
                     }
-                    if (forceUpdate) loadFromNetwork(silent)
                     return@launch
                 }
 
@@ -98,10 +114,10 @@ class BoardViewModel(
                             cachedPresentationModel = null,
                             needUpdateAfter = forceUpdate,
                             putToFileCache = false,
-                            itemsCountBefore = 0
+                            itemsCountBefore = 0,
+                            expectPostNumber = if (forceUpdate) expectPostNumber else null
                         )
                     }
-                    if (forceUpdate) loadFromNetwork(silent)
                     return@launch
                 }
             }
@@ -113,13 +129,12 @@ class BoardViewModel(
             }
 
             if (!isListLoaded || forceUpdate) {
-                loadFromNetwork(silent)
+                loadFromNetwork(silent, expectPostNumber)
             }
         }
     }
 
-    private suspend fun loadFromNetwork(silent: Boolean) {
-        val isThreadPage = pageType == TYPE_POSTSLIST
+    private suspend fun loadFromNetwork(silent: Boolean, expectPostNumber: String?) {
         val fromScratch: Boolean
         val page: SerializablePage
 
@@ -139,10 +154,98 @@ class BoardViewModel(
             else -> 0
         }
 
-        isUpdatingNow = true
+        val maxAttempts = if (expectPostNumber != null && pageType == TYPE_POSTSLIST) {
+            POST_REFRESH_ATTEMPTS
+        } else {
+            1
+        }
 
-        // Result type: success(page), error(message, silent), interactive(exception, silent)
-        val result = suspendCancellableCoroutine { cont ->
+        isUpdatingNow = true
+        var lastResult: LoadResult = LoadResult.Error("Unknown error")
+
+        try {
+            for (attempt in 1..maxAttempts) {
+                if (expectPostNumber != null) {
+                    invalidateThreadCache()
+                }
+
+                lastResult = fetchPage(page)
+
+                when (lastResult) {
+                    is LoadResult.Success -> {
+                        val found = expectPostNumber == null || pageContainsPost(page, expectPostNumber)
+                        if (found || attempt == maxAttempts) break
+                        delay(POST_REFRESH_DELAY_MS * attempt)
+                    }
+                    is LoadResult.Error, is LoadResult.Interactive -> break
+                }
+            }
+        } finally {
+            isUpdatingNow = false
+        }
+
+        when (val result = lastResult) {
+            is LoadResult.Success -> {
+                subscriptions.checkOwnPost(page, itemsCountBefore)
+                val checkSubs = subscriptions.checkSubscriptions(page, itemsCountBefore)
+                val newSubPostNumber = if (checkSubs >= 0) page.posts[checkSubs].number else null
+
+                if (fromScratch) {
+                    isListLoaded = true
+                    withContext(Dispatchers.Main) {
+                        _uiState.value = BoardUiState.Content(
+                            page = page,
+                            cachedPresentationModel = null,
+                            needUpdateAfter = false,
+                            putToFileCache = true,
+                            itemsCountBefore = itemsCountBefore,
+                            expectPostNumber = null
+                        )
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        _uiState.value = BoardUiState.Updated(
+                            page = page,
+                            fromScratch = false,
+                            itemsCountBefore = itemsCountBefore,
+                            newSubscriptionPostNumber = newSubPostNumber
+                        )
+                    }
+                }
+            }
+
+            is LoadResult.Error -> {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = BoardUiState.Error(result.message, silent)
+                }
+            }
+
+            is LoadResult.Interactive -> {
+                withContext(Dispatchers.Main) {
+                    _events.value = BoardEvent.InteractiveRequired(result.exception, silent)
+                }
+            }
+        }
+    }
+
+    private fun invalidateThreadCache() {
+        val pageModel = tabModel.pageModel ?: return
+        if (pageModel.type != UrlPageModel.TYPE_THREADPAGE) return
+        if (chan is AbstractChanModule) {
+            (chan as AbstractChanModule).invalidateThreadPostsCache(pageModel.boardName, pageModel.threadNumber)
+        }
+    }
+
+    private fun pageContainsPost(page: SerializablePage, postNumber: String): Boolean {
+        val posts = page.posts ?: return false
+        for (post in posts) {
+            if (postNumber == post.number) return true
+        }
+        return false
+    }
+
+    private suspend fun fetchPage(page: SerializablePage): LoadResult {
+        return suspendCancellableCoroutine { cont ->
             val bridgedTask = object : CancellableTask.BaseCancellableTask() {
                 override fun isCancelled(): Boolean {
                     return super.isCancelled() || !cont.isActive
@@ -169,51 +272,7 @@ class BoardViewModel(
             )
 
             cont.invokeOnCancellation { bridgedTask.cancel() }
-            pageLoader.run() // blocks on IO dispatcher — this is fine
-        }
-
-        isUpdatingNow = false
-
-        when (result) {
-            is LoadResult.Success -> {
-                subscriptions.checkOwnPost(page, itemsCountBefore)
-                val checkSubs = subscriptions.checkSubscriptions(page, itemsCountBefore)
-                val newSubPostNumber = if (checkSubs >= 0) page.posts[checkSubs].number else null
-
-                if (fromScratch) {
-                    isListLoaded = true
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = BoardUiState.Content(
-                            page = page,
-                            cachedPresentationModel = null,
-                            needUpdateAfter = false,
-                            putToFileCache = true,
-                            itemsCountBefore = itemsCountBefore
-                        )
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = BoardUiState.Updated(
-                            page = page,
-                            fromScratch = false,
-                            itemsCountBefore = itemsCountBefore,
-                            newSubscriptionPostNumber = newSubPostNumber
-                        )
-                    }
-                }
-            }
-
-            is LoadResult.Error -> {
-                withContext(Dispatchers.Main) {
-                    _uiState.value = BoardUiState.Error(result.message, silent)
-                }
-            }
-
-            is LoadResult.Interactive -> {
-                withContext(Dispatchers.Main) {
-                    _events.value = BoardEvent.InteractiveRequired(result.exception, silent)
-                }
-            }
+            pageLoader.run()
         }
     }
 

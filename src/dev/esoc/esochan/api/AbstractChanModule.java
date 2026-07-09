@@ -315,6 +315,13 @@ public abstract class AbstractChanModule implements HttpChanModule {
         HttpStreamer.getInstance().downloadFileFromUrl(fixedUrl, out, HttpRequestModel.DEFAULT_GET, httpClient, listener, task, false);
     }
 
+    /**
+     * Drop cached If-Modified-Since state for a thread so the next posts fetch is unconditional.
+     * Used after posting so CDN 304s do not hide a just-created reply.
+     */
+    public void invalidateThreadPostsCache(String boardName, String threadNumber) {
+    }
+
     protected JSONObject downloadJSONObject(String url, boolean checkIfModidied, ProgressListener listener, CancellableTask task) throws Exception {
         HttpRequestModel rqModel = HttpRequestModel.builder().setGET().setCheckIfModified(checkIfModidied).build();
         JSONObject object = HttpStreamer.getInstance().getJSONObjectFromUrl(url, rqModel, httpClient, listener, task, false);

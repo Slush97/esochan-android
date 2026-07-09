@@ -86,7 +86,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="tabs_newtab">New Tab</string>
     <string name="tabs_favorites">Favorites</string>
     <string name="tabs_history">History</string>
+    <string name="tabs_saved">Saved</string>
+    <string name="tabs_activity">Activity</string>
     <string name="sidebar_home">4chan</string>
+    <string name="saved_empty">No saved threads</string>
+    <string name="activity_empty">No tracked posts yet.\nPost with “Subscribe to own posts” enabled, or long-press a post and Subscribe.</string>
+    <string name="activity_section_threads">Threads you posted in</string>
+    <string name="activity_section_posts">Tracked posts</string>
+    <string name="activity_post_title">/%1$s/%2$s · &gt;&gt;%3$s</string>
+    <string name="activity_thread_title">/%1$s/%2$s</string>
+    <string name="menu_clear_saved">Clear saved</string>
+    <string name="menu_clear_activity">Clear activity</string>
+    <string name="context_menu_remove_saved">Remove from saved</string>
+    <string name="context_menu_remove_subscription">Unsubscribe</string>
+    <string name="context_menu_remove_thread_subscriptions">Unsubscribe from thread</string>
     
     <string name="tabs_tracker_title">Auto Update</string>
     <string name="tabs_tracker_title_unread">New Posts</string>
@@ -270,6 +283,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="posting_error">Failed to send</string>
     <string name="posting_error_interactive_format">Requested %s checking</string>
     <string name="posting_error_default">An unknown error occurred</string>
+    <string name="posting_error_copy_details">Copy details</string>
     <string name="posting_success">Sent successfully</string>
     <string name="posting_success_post">The post was sent successfully</string>
     <string name="posting_success_thread">The thread was added successfully</string>
@@ -355,6 +369,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     <string name="subscriptions_notification_text_format">in thread: %s</string>
     <string name="subscriptions_notification_text_multiple">in multiple threads</string>
     <string name="subscriptions_notification_text_more">+ %d more</string>
+    <string name="subscriptions_reply_toast">New reply in %s — tap to open</string>
+    <string name="subscriptions_reply_toast_here">New reply to your post — tap to jump</string>
     
     <string name="notification_url_copied">Address is copied to the clipboard\n%s</string>
     <string name="notification_post_not_found">The post isn\'t found</string>
