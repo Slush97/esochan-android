@@ -4,181 +4,370 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#d6daf0">
+  <meta name="color-scheme" content="light">
   <meta name="format-detection" content="telephone=no">
   <title>/esochan/ - a 4chan client for Android</title>
-  <meta name="description" content="esochan - a 4chan client for Android, rebuilt from Overchan Android. GPLv3.">
-  <meta property="og:title" content="/esochan/ - a 4chan client">
-  <meta property="og:description" content="A 4chan client for Android, rebuilt from Overchan Android.">
+  <meta name="description" content="esochan is a free, open-source 4chan client for Android. Catalog, threads, inline media, offline saves. GPLv3. Sideload from GitHub — no store, no account.">
+  <meta name="keywords" content="esochan, 4chan, android, imageboard, client, apk, gpl, open source">
+  <link rel="canonical" href="https://slush97.github.io/esochan-android/">
+  <meta property="og:site_name" content="esochan">
+  <meta property="og:title" content="/esochan/ - a 4chan client for Android">
+  <meta property="og:description" content="Free open-source 4chan client for Android. Catalog, threads, inline media, offline saves. GPLv3.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://slush97.github.io/esochan-android/">
+  <meta property="og:image" content="https://slush97.github.io/esochan-android/assets/icon.png">
   <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="/esochan/ - a 4chan client for Android">
+  <meta name="twitter:description" content="Free open-source 4chan client for Android. Sideload from GitHub.">
+  <meta name="twitter:image" content="https://slush97.github.io/esochan-android/assets/icon.png">
   <link rel="icon" type="image/png" href="assets/icon.png">
   <link rel="apple-touch-icon" href="assets/icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- top board bar -->
-  <nav class="navbar">
+  <a class="skip" href="#thread">Skip to content</a>
+
+  <!-- board top bar -->
+  <nav class="navbar" aria-label="Site">
     <div class="wrap">
-      <span class="boards">
+      <span class="boards" aria-label="Popular boards">
         <span class="brackets">[</span><!--
-        --><a href="https://boards.4chan.org/a/">a</a> /
-        <a href="https://boards.4chan.org/g/">g</a> /
-        <a href="https://boards.4chan.org/v/">v</a> /
-        <a href="https://boards.4chan.org/tv/">tv</a> /
-        <a href="https://boards.4chan.org/mu/">mu</a> /
-        <a href="https://boards.4chan.org/k/">k</a> /
-        <a href="https://boards.4chan.org/ck/">ck</a> /
-        <a href="https://boards.4chan.org/fit/">fit</a> /
-        <a href="https://boards.4chan.org/sci/">sci</a> /
-        <a href="https://boards.4chan.org/lit/">lit</a> /
-        <a href="https://boards.4chan.org/jp/">jp</a> /
-        <a href="https://boards.4chan.org/biz/">biz</a> /
-        <a href="https://boards.4chan.org/x/">x</a> /
-        <a href="https://boards.4chan.org/wg/">wg</a><!--
+        --><a href="https://boards.4chan.org/a/" rel="noopener">a</a> /
+        <a href="https://boards.4chan.org/g/" rel="noopener">g</a> /
+        <a href="https://boards.4chan.org/v/" rel="noopener">v</a> /
+        <a href="https://boards.4chan.org/tv/" rel="noopener">tv</a> /
+        <a href="https://boards.4chan.org/mu/" rel="noopener">mu</a> /
+        <a href="https://boards.4chan.org/k/" rel="noopener">k</a> /
+        <a href="https://boards.4chan.org/ck/" rel="noopener">ck</a> /
+        <a href="https://boards.4chan.org/fit/" rel="noopener">fit</a> /
+        <a href="https://boards.4chan.org/sci/" rel="noopener">sci</a> /
+        <a href="https://boards.4chan.org/lit/" rel="noopener">lit</a> /
+        <a href="https://boards.4chan.org/jp/" rel="noopener">jp</a> /
+        <a href="https://boards.4chan.org/biz/" rel="noopener">biz</a> /
+        <a href="https://boards.4chan.org/x/" rel="noopener">x</a> /
+        <a href="https://boards.4chan.org/wg/" rel="noopener">wg</a><!--
         --><span class="brackets">]</span>
       </span>
       <span class="right">
-        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android">Source</a><span class="brackets">]</span>
-        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android/releases">Releases</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="#get">Download</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android" rel="noopener">Source</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android/releases" rel="noopener">Releases</a><span class="brackets">]</span>
       </span>
     </div>
   </nav>
 
-  <!-- hero -->
-  <header class="hero">
-    <img class="logo" src="assets/icon.png" width="88" height="88" alt="esochan icon">
-    <h1>/esochan/</h1>
-    <p class="tagline">a 4chan client for Android</p>
-    <p class="meta">Android 7.0+ &middot; GPLv3 &middot; no store, no account</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/Slush97/esochan-android/releases">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
-        Download APK <span class="sub">.apk</span>
-      </a>
-      <a class="btn github" href="https://github.com/Slush97/esochan-android">
-        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        Source <span class="sub">GitHub</span>
-      </a>
+  <!-- board header -->
+  <header class="boardhead">
+    <div class="wrap boardhead-inner">
+      <img class="boardlogo" src="assets/icon.png" width="64" height="64" alt="" decoding="async">
+      <div class="boardhead-text">
+        <h1><span class="boardpath">/esochan/</span> — Android 4chan client</h1>
+        <p class="boardsub">
+          Free · open source · no store · no account
+          <span class="sep">·</span>
+          <span class="badge">v1.0.0</span>
+          <span class="sep">·</span>
+          Android&nbsp;7.0+
+        </p>
+      </div>
     </div>
+    <hr class="boardhr">
   </header>
 
-  <div class="wrap">
+  <main id="thread" class="wrap thread">
 
-    <!-- features -->
-    <section id="features">
-      <h2 class="sectionTitle">Features</h2>
-      <p class="sectionLede">A rebuild of Overchan Android with a new HTTP stack, a Material interface, and an inline media viewer. Only 4chan now, since the other boards are dead.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>Every board</h3>
-          <p>Browse every 4chan board in a native app: catalog, threads, and replies.</p>
-        </div>
-        <div class="card">
-          <h3>Media that opens inline</h3>
-          <p>Pinch-zoom images, GIFs, and video in a fullscreen gallery. Swipe through a thread's attachments without leaving it.</p>
-        </div>
-        <div class="card">
-          <h3>Save threads offline</h3>
-          <p>Archive a whole thread, posts and images, to read offline later. Saved in the app's own storage, no permissions needed.</p>
-        </div>
-        <div class="card">
-          <h3>Rebuilt for modern Android</h3>
-          <p>OkHttp networking, a Media3 viewer, and an AppCompat/Material UI on a current toolchain. Targets Android 15, runs back to Android 7.</p>
-        </div>
+    <!-- OP -->
+    <article class="post op" id="p1">
+      <div class="postInfo">
+        <input type="checkbox" disabled tabindex="-1" aria-hidden="true">
+        <span class="subject">esochan 1.0</span>
+        <span class="nameBlock"><span class="name">Anonymous</span></span>
+        <span class="dateTime" title="First public release">07/09/26(Thu)00:00:00</span>
+        <span class="postNum">
+          <a href="#p1" title="Link to this post">No.</a><a href="#p1">1</a>
+        </span>
       </div>
-    </section>
-
-    <!-- screenshots -->
-    <section id="screens">
-      <h2 class="sectionTitle">Screenshots</h2>
-      <div class="shots">
-        <figure class="shot">
-          <span class="fileinfo">File: thread.png</span>
-          <div class="phone" role="img" aria-label="Screenshot placeholder: thread view">
-            <div class="screen">
-              <div class="appbar"></div>
-              <div class="body">
-                <div class="row"><div class="thumb"></div><div class="lines"><i></i><i class="green"></i><i class="short"></i></div></div>
-                <div class="row"><div class="thumb"></div><div class="lines"><i></i><i class="short"></i></div></div>
-                <div class="row"><div class="thumb"></div><div class="lines"><i class="green"></i><i></i></div></div>
-              </div>
-            </div>
-            <span class="ph-label">screenshot</span>
-          </div>
-          <figcaption>Thread view</figcaption>
-        </figure>
-        <figure class="shot">
-          <span class="fileinfo">File: catalog.png</span>
-          <div class="phone" role="img" aria-label="Screenshot placeholder: board catalog">
-            <div class="screen">
-              <div class="appbar"></div>
-              <div class="grid2"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-            </div>
-            <span class="ph-label">screenshot</span>
-          </div>
-          <figcaption>Board catalog</figcaption>
-        </figure>
-        <figure class="shot">
-          <span class="fileinfo">File: gallery.png</span>
-          <div class="phone" role="img" aria-label="Screenshot placeholder: media gallery">
-            <div class="screen">
-              <div class="appbar"></div>
-              <div class="body">
-                <div class="row"><div class="thumb" style="width:100%;height:110px"></div></div>
-                <div class="row"><div class="lines"><i></i><i class="short"></i></div></div>
-              </div>
-            </div>
-            <span class="ph-label">screenshot</span>
-          </div>
-          <figcaption>Media gallery</figcaption>
-        </figure>
+      <div class="file">
+        <div class="fileText">File: <a href="assets/icon.png">icon.png</a> (16 KB, 192x192)</div>
+        <a class="fileThumb" href="assets/icon.png" tabindex="-1">
+          <img src="assets/icon.png" width="125" height="125" alt="esochan icon" decoding="async">
+        </a>
       </div>
-    </section>
-
-    <!-- get it -->
-    <section id="get">
-      <h2 class="sectionTitle">Install or build</h2>
-      <div class="getgrid">
-        <div class="card">
-          <h3>Prebuilt APK</h3>
-          <p>Grab the latest debug build from GitHub Releases and sideload it. No store, no account.</p>
-          <p><a class="btn primary" href="https://github.com/Slush97/esochan-android/releases">
+      <blockquote class="postMessage">
+        <p>A native 4chan client for Android, rebuilt from
+        <a href="https://github.com/miku-nyan/Overchan-Android" rel="noopener">Overchan Android</a>.</p>
+        <p>Browse every board, open media inline, save whole threads offline, and post from your phone —
+        without a store listing, account, or tracker glue.</p>
+        <p class="greentext">&gt;only 4chan, the other boards are dead</p>
+        <p class="greentext">&gt;GPLv3, source on GitHub</p>
+        <p class="greentext">&gt;sideload the APK and you're in</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/Slush97/esochan-android/releases/download/v1.0.0/esochan-1.0.0.apk" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
-            Download APK</a></p>
+            Download APK
+            <span class="sub">v1.0.0</span>
+          </a>
+          <a class="btn github" href="https://github.com/Slush97/esochan-android" rel="noopener">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            Source
+            <span class="sub">GitHub</span>
+          </a>
         </div>
-        <div class="card">
-          <h3>From source</h3>
-          <p>Needs JDK 17+, the Android SDK, and the NDK.</p>
-<pre class="code"><span class="c"># clone and build</span>
+      </blockquote>
+    </article>
+
+    <!-- reply: what it does -->
+    <article class="post reply" id="p2">
+      <div class="postInfo">
+        <input type="checkbox" disabled tabindex="-1" aria-hidden="true">
+        <span class="nameBlock"><span class="name">Anonymous</span></span>
+        <span class="dateTime">07/09/26(Thu)00:00:01</span>
+        <span class="postNum">
+          <a href="#p2" title="Link to this post">No.</a><a href="#p2">2</a>
+        </span>
+      </div>
+      <blockquote class="postMessage">
+        <a class="quotelink" href="#p1">&gt;&gt;1</a>
+        <p><strong>What you get</strong></p>
+        <ul class="featlist">
+          <li>
+            <strong>Full board browsing</strong>
+            <span>Catalog, pages, threads, and replies for every 4chan board — native UI, not a WebView wrapper.</span>
+          </li>
+          <li>
+            <strong>Inline media gallery</strong>
+            <span>Pinch-zoom images and GIFs, play video, swipe through a thread’s attachments without leaving the thread.</span>
+          </li>
+          <li>
+            <strong>Offline thread saves</strong>
+            <span>Archive a whole thread (posts + images) into the app’s storage. No storage permission theater.</span>
+          </li>
+          <li>
+            <strong>Tabs, history, favorites</strong>
+            <span>Keep several boards and threads open; jump back to recent and bookmarked threads.</span>
+          </li>
+          <li>
+            <strong>Themes that match the boards</strong>
+            <span>Yotsuba B, Futaba, Photon, Tomorrow, and friends — including custom theme JSON.</span>
+          </li>
+          <li>
+            <strong>Modern Android under the hood</strong>
+            <span>OkHttp, Media3, Material Components. Targets Android 15, runs back to Android 7.0.</span>
+          </li>
+        </ul>
+      </blockquote>
+    </article>
+
+    <!-- reply: screenshots -->
+    <article class="post reply" id="p3">
+      <div class="postInfo">
+        <input type="checkbox" disabled tabindex="-1" aria-hidden="true">
+        <span class="nameBlock"><span class="name">Anonymous</span></span>
+        <span class="dateTime">07/09/26(Thu)00:00:02</span>
+        <span class="postNum">
+          <a href="#p3" title="Link to this post">No.</a><a href="#p3">3</a>
+        </span>
+      </div>
+      <blockquote class="postMessage">
+        <a class="quotelink" href="#p1">&gt;&gt;1</a>
+        <p><strong>How it looks</strong> <span class="muted">(UI previews — install for the real thing)</span></p>
+        <div class="shots" role="list">
+          <figure class="shot" role="listitem">
+            <div class="fileText">File: <span>thread.png</span></div>
+            <div class="phone" role="img" aria-label="Preview of thread view with posts and thumbnails">
+              <div class="bezel">
+                <div class="notch" aria-hidden="true"></div>
+                <div class="screen yotsuba">
+                  <div class="appbar">
+                    <span class="appbar-title">/g/ — Thread</span>
+                    <span class="appbar-actions" aria-hidden="true">
+                      <i></i><i></i><i></i>
+                    </span>
+                  </div>
+                  <div class="threadview">
+                    <div class="tpost op-post">
+                      <div class="tmeta"><span class="tname">Anonymous</span> <span class="tno">No.1048291</span></div>
+                      <div class="tbody">
+                        <div class="tthumb"></div>
+                        <div class="ttext">
+                          <span class="tsub">esochan when</span>
+                          <i></i><i class="green"></i><i class="short"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tpost">
+                      <div class="tmeta"><span class="tname">Anonymous</span> <span class="tno">No.1048292</span></div>
+                      <div class="tbody">
+                        <div class="ttext">
+                          <i class="ql"></i><i></i><i class="green short"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tpost">
+                      <div class="tmeta"><span class="tname">Anonymous</span> <span class="tno">No.1048295</span></div>
+                      <div class="tbody">
+                        <div class="tthumb sm"></div>
+                        <div class="ttext">
+                          <i class="ql"></i><i></i><i class="short"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tpost">
+                      <div class="tmeta"><span class="tname">Anonymous</span> <span class="tno">No.1048301</span></div>
+                      <div class="tbody">
+                        <div class="ttext">
+                          <i class="green"></i><i></i><i class="short"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>Thread view</figcaption>
+          </figure>
+
+          <figure class="shot" role="listitem">
+            <div class="fileText">File: <span>catalog.png</span></div>
+            <div class="phone" role="img" aria-label="Preview of board catalog grid">
+              <div class="bezel">
+                <div class="notch" aria-hidden="true"></div>
+                <div class="screen yotsuba">
+                  <div class="appbar">
+                    <span class="appbar-title">/a/ — Catalog</span>
+                    <span class="appbar-actions" aria-hidden="true">
+                      <i></i><i></i>
+                    </span>
+                  </div>
+                  <div class="catalogview">
+                    <div class="ccell"><div class="cthumb c1"></div><span></span><span class="s"></span></div>
+                    <div class="ccell"><div class="cthumb c2"></div><span></span><span class="s"></span></div>
+                    <div class="ccell"><div class="cthumb c3"></div><span></span><span class="s"></span></div>
+                    <div class="ccell"><div class="cthumb c4"></div><span></span><span class="s"></span></div>
+                    <div class="ccell"><div class="cthumb c5"></div><span></span><span class="s"></span></div>
+                    <div class="ccell"><div class="cthumb c6"></div><span></span><span class="s"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>Board catalog</figcaption>
+          </figure>
+
+          <figure class="shot" role="listitem">
+            <div class="fileText">File: <span>gallery.png</span></div>
+            <div class="phone" role="img" aria-label="Preview of fullscreen media gallery">
+              <div class="bezel">
+                <div class="notch light" aria-hidden="true"></div>
+                <div class="screen gallery">
+                  <div class="g-chrome top">
+                    <span>3 / 12</span>
+                    <span class="g-actions" aria-hidden="true"><i></i><i></i></span>
+                  </div>
+                  <div class="g-stage">
+                    <div class="g-image"></div>
+                  </div>
+                  <div class="g-chrome bot">
+                    <span class="g-filename">1488219382910.jpg</span>
+                    <span class="g-nav" aria-hidden="true">‹ · ›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>Media gallery</figcaption>
+          </figure>
+        </div>
+      </blockquote>
+    </article>
+
+    <!-- reply: install -->
+    <article class="post reply" id="get">
+      <div class="postInfo">
+        <input type="checkbox" disabled tabindex="-1" aria-hidden="true">
+        <span class="subject">Install</span>
+        <span class="nameBlock"><span class="name">Anonymous</span></span>
+        <span class="dateTime">07/09/26(Thu)00:00:03</span>
+        <span class="postNum">
+          <a href="#get" title="Link to this post">No.</a><a href="#get">4</a>
+        </span>
+      </div>
+      <blockquote class="postMessage">
+        <a class="quotelink" href="#p1">&gt;&gt;1</a>
+        <div class="installgrid">
+          <div class="installcard">
+            <h3>Prebuilt APK</h3>
+            <ol class="steps">
+              <li>Open the <a href="https://github.com/Slush97/esochan-android/releases/latest" rel="noopener">latest release</a>.</li>
+              <li>Download <a href="https://github.com/Slush97/esochan-android/releases/download/v1.0.0/esochan-1.0.0.apk" rel="noopener"><code>esochan-1.0.0.apk</code></a> (or the versioned APK on that release).</li>
+              <li>Allow install from your browser/file manager if Android asks.</li>
+              <li>Open the APK and install. Done.</li>
+            </ol>
+            <p class="muted">Updates: install a newer release over the old one (same signing key).</p>
+            <p>
+              <a class="btn primary" href="https://github.com/Slush97/esochan-android/releases/download/v1.0.0/esochan-1.0.0.apk" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+                Get v1.0.0
+              </a>
+            </p>
+          </div>
+          <div class="installcard">
+            <h3>Build from source</h3>
+            <p>Needs <strong>JDK 17+</strong>, the Android SDK, and the NDK.</p>
+<pre class="code" tabindex="0"><span class="c"># clone and build</span>
 git clone https://github.com/Slush97/esochan-android
 cd esochan-android
 ./gradlew assembleDebug
 
 <span class="c"># output</span>
 build/outputs/apk/debug/esochan-debug.apk</pre>
+            <p class="muted">Release builds need a keystore — see the README.</p>
+          </div>
         </div>
+      </blockquote>
+    </article>
+
+    <!-- reply: notes -->
+    <article class="post reply" id="p5">
+      <div class="postInfo">
+        <input type="checkbox" disabled tabindex="-1" aria-hidden="true">
+        <span class="nameBlock"><span class="name">Anonymous</span></span>
+        <span class="dateTime">07/09/26(Thu)00:00:04</span>
+        <span class="postNum">
+          <a href="#p5" title="Link to this post">No.</a><a href="#p5">5</a>
+        </span>
       </div>
-    </section>
+      <blockquote class="postMessage">
+        <a class="quotelink" href="#p1">&gt;&gt;1</a>
+        <p><strong>Before you install</strong></p>
+        <ul class="featlist compact">
+          <li>Sideload only for now — not on Google Play or F-Droid yet.</li>
+          <li>Captcha / Cloudflare flows depend on live site behavior; test posting on a real device.</li>
+          <li>Not affiliated with 4chan or 4chan LLC. Use the boards responsibly.</li>
+        </ul>
+        <p class="greentext">&gt;issues and PRs welcome on GitHub</p>
+      </blockquote>
+    </article>
 
-  </div>
+  </main>
 
-  <!-- footer -->
+  <hr class="boardhr bottom">
+
   <footer class="footer">
-    <div class="nav">
-      <span class="brackets">[</span><a href="#">Top</a><span class="brackets">]</span>
-      <span class="brackets">[</span><a href="https://boards.4chan.org/">4chan</a><span class="brackets">]</span>
-      <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android">GitHub</a><span class="brackets">]</span>
-    </div>
-    <form class="delform" onsubmit="return false" aria-label="Delete post (decorative)">
-      Delete Post <input type="checkbox" aria-label="File only"> File Only
-      &nbsp; Password <input type="text" aria-label="Password">
-      <input type="submit" value="Delete">
-    </form>
-    <div class="disclaimer">
-      esochan is licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.txt">GPLv3</a>.
-      Forked from <a href="https://github.com/miku-nyan/Overchan-Android">Overchan Android</a>, originally by
-      <a href="https://github.com/miku-nyan">miku-nyan</a>. Not affiliated with 4chan or 4chan LLC.
+    <div class="wrap">
+      <div class="nav">
+        <span class="brackets">[</span><a href="#thread">Top</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="#get">Download</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android" rel="noopener">GitHub</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="https://github.com/Slush97/esochan-android/blob/master/CHANGELOG.md" rel="noopener">Changelog</a><span class="brackets">]</span>
+        <span class="brackets">[</span><a href="https://boards.4chan.org/" rel="noopener">4chan</a><span class="brackets">]</span>
+      </div>
+      <p class="disclaimer">
+        esochan is licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.txt" rel="noopener">GPLv3</a>.
+        Forked from <a href="https://github.com/miku-nyan/Overchan-Android" rel="noopener">Overchan Android</a>
+        by <a href="https://github.com/miku-nyan" rel="noopener">miku-nyan</a>.
+        Not affiliated with 4chan or 4chan LLC.
+      </p>
+      <p class="footmeta">Package <code>dev.esoc.esochan</code> · Android 7.0+ (API 24)</p>
     </div>
   </footer>
 
