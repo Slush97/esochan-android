@@ -61,12 +61,18 @@ public class TabsState implements Serializable {
         return null;
     }
 
-    /** Returns a bounded snapshot suitable for readers that do not own the UI list. */
+    /**
+     * Returns a bounded snapshot of the current tabs.
+     *
+     * <p>{@code tabsArray} is confined to the main (UI) thread: it is the backing list of
+     * {@link TabsAdapter} (an {@code ArrayAdapter}), whose mutations, the drag-reorder in
+     * {@code MainActivity}, and every serialization/read all run on the UI thread. Off-thread
+     * callers (the auto-update service) must therefore hop onto the main looper before calling
+     * this. A lock here would be a false comfort — the {@code ArrayAdapter} writers never take it.
+     */
     public TabModel[] snapshotTabs() {
         ArrayList<TabModel> tabs = tabsArray;
         if (tabs == null) return new TabModel[0];
-        synchronized (tabs) {
-            return tabs.toArray(new TabModel[0]);
-        }
+        return tabs.toArray(new TabModel[0]);
     }
 }

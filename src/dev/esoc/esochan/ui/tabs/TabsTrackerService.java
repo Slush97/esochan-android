@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -78,6 +80,8 @@ public class TabsTrackerService extends Service {
     public static final String EXTRA_SUBSCRIPTION_URL = "SubscriptionUrl";
     public static final int TRACKER_NOTIFICATION_UPDATE_ID = 40;
     public static final int TRACKER_NOTIFICATION_SUBSCRIPTIONS_ID = 50;
+    /** Cap on how long the worker waits for a UI-thread tab snapshot before skipping the cycle. */
+    private static final long SNAPSHOT_TIMEOUT_SECONDS = 5;
     
     /** true, если сервис сейчас работает */
     private static volatile boolean running = false;
@@ -203,6 +207,8 @@ public class TabsTrackerService extends Service {
     private final AtomicBoolean updateImmediately = new AtomicBoolean(false);
     
     private CancellableTask task = null;
+    /** The worker currently owning the service, or null; used to hand it the newest start id. */
+    private TrackerLoop currentLoop = null;
 
     private static class TrackingSnapshot {
         final TabModel[] tabs;
@@ -221,13 +227,17 @@ public class TabsTrackerService extends Service {
     private TrackingSnapshot getTrackingSnapshot() {
         FutureTask<TrackingSnapshot> snapshotTask = new FutureTask<>(() ->
                 new TrackingSnapshot(
-                        tabsState.tabsArray.toArray(new TabModel[0]),
+                        tabsState.snapshotTabs(),
                         tabsSwitcher.currentId));
         Async.runOnUiThread(snapshotTask);
         try {
-            return snapshotTask.get();
+            return snapshotTask.get(SNAPSHOT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return null;
+        } catch (TimeoutException e) {
+            snapshotTask.cancel(false);
+            Logger.e(TAG, "Timed out snapshotting tabs for auto-update; skipping this cycle");
             return null;
         } catch (ExecutionException e) {
             Logger.e(TAG, "Unable to snapshot tabs for auto-update", e);
@@ -269,12 +279,15 @@ public class TabsTrackerService extends Service {
         if (immediate) updateImmediately.set(true);
         if (running) {
             Logger.d(TAG, "TabsTrackerService reconfigured while running");
+            // The live worker absorbs this start; hand it the newest id so it can stop under it.
+            if (currentLoop != null) currentLoop.startId = startId;
             return Service.START_NOT_STICKY;
         }
         clearUnread();
         clearSubscriptions();
-        TrackerLoop loop = new TrackerLoop();
+        TrackerLoop loop = new TrackerLoop(startId);
         task = loop;
+        currentLoop = loop;
         running = true;
         Async.runAsync(loop);
         return Service.START_NOT_STICKY;
@@ -370,7 +383,13 @@ public class TabsTrackerService extends Service {
     
     private class TrackerLoop extends BaseCancellableTask implements Runnable {
         private int timerCounter = 0;
-        
+        /** Newest start id this worker has absorbed; stops the service without tearing down a newer start. */
+        volatile int startId;
+
+        TrackerLoop(int startId) {
+            this.startId = startId;
+        }
+
         @Override
         public void run() {
             try {
@@ -413,7 +432,8 @@ public class TabsTrackerService extends Service {
                 currentUpdatingTabId = -1;
                 running = false;
                 cancelUpdateNotification();
-                stopSelf();
+                // stopSelf(startId) no-ops if a newer start arrived, so we never cancel a fresh loop.
+                stopSelf(startId);
             }
         }
         
