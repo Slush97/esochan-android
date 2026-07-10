@@ -18,12 +18,13 @@
 
 package dev.esoc.esochan.ui.settings;
 
-import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import android.app.ListActivity;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -34,15 +35,13 @@ import androidx.appcompat.app.AlertDialog;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
 import dev.esoc.esochan.common.Async;
-import dev.esoc.esochan.common.IOUtils;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.http.client.ExtendedHttpClient;
 import dev.esoc.esochan.http.streamer.HttpRequestModel;
 import dev.esoc.esochan.http.streamer.HttpStreamer;
-import dev.esoc.esochan.lib.FileDialogActivity;
+import dev.esoc.esochan.lib.UriFileUtils;
 import org.json.JSONArray;
-import dev.esoc.esochan.ui.AppearanceUtils;
 
 public class CustomThemeListActivity extends ListActivity {
     private static final int REQUEST_CODE_SELECT_CUSTOM_THEME = 1;
@@ -112,12 +111,7 @@ public class CustomThemeListActivity extends ListActivity {
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
         if (position == 0) {
-            if (!AppearanceUtils.hasAccessStorage(this)) return;
-            Intent selectFile = new Intent(this, FileDialogActivity.class);
-            selectFile.putExtra(FileDialogActivity.CAN_SELECT_DIR, false);
-            selectFile.putExtra(FileDialogActivity.START_PATH, MainApplication.getInstance().settings.getDownloadDirectory().getAbsolutePath());
-            selectFile.putExtra(FileDialogActivity.SELECTION_MODE, FileDialogActivity.SELECTION_MODE_OPEN);
-            selectFile.putExtra(FileDialogActivity.FORMAT_FILTER, new String[] { "json" });
+            Intent selectFile = UriFileUtils.createOpenDocumentIntent(new String[] { "json" });
             startActivityForResult(selectFile, REQUEST_CODE_SELECT_CUSTOM_THEME);
             return;
         }
@@ -159,28 +153,57 @@ public class CustomThemeListActivity extends ListActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_SELECT_CUSTOM_THEME) {
-            String path = data.getStringExtra(FileDialogActivity.RESULT_PATH);
-            if (path != null) {
-                FileInputStream is = null;
-                try {
-                    is = new FileInputStream(path);
-                    byte[] buf = new byte[8192];
-                    int size = 0;
-                    while (size < buf.length) {
-                        int count = is.read(buf, size, buf.length - size);
-                        if (count == -1) break;
-                        size += count;
+        if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_SELECT_CUSTOM_THEME
+                && data != null && data.getData() != null) {
+            final Uri uri = data.getData();
+            Async.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    String theme = null;
+                    int errorResId = 0;
+                    Exception failure = null;
+                    if (!UriFileUtils.hasAllowedDocument(
+                            CustomThemeListActivity.this, uri, new String[] { "json" })) {
+                        errorResId = R.string.custom_themes_invalid_file;
+                    } else {
+                        try {
+                            theme = UriFileUtils.readText(CustomThemeListActivity.this, uri,
+                                    UriFileUtils.MAX_THEME_BYTES, StandardCharsets.UTF_8);
+                        } catch (UriFileUtils.FileTooLargeException e) {
+                            errorResId = R.string.custom_themes_file_too_large;
+                        } catch (Exception e) {
+                            failure = e;
+                        }
                     }
-                    MainApplication.getInstance().settings.setCustomTheme(new String(buf, 0, size, "UTF-8"));
-                } catch (Exception e) {
-                    Logger.e(TAG, e);
-                    Toast.makeText(this, e.getMessage() != null ? e.getMessage() : e.toString(), Toast.LENGTH_LONG).show();
-                } finally {
-                    IOUtils.closeQuietly(is);
+
+                    final String importedTheme = theme;
+                    final int importedErrorResId = errorResId;
+                    final Exception importedFailure = failure;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isFinishing() || isDestroyed()) return;
+                            try {
+                                if (importedErrorResId != 0) {
+                                    Toast.makeText(CustomThemeListActivity.this,
+                                            importedErrorResId, Toast.LENGTH_LONG).show();
+                                } else if (importedFailure != null) {
+                                    Logger.e(TAG, importedFailure);
+                                    Toast.makeText(CustomThemeListActivity.this,
+                                            R.string.error_unknown, Toast.LENGTH_LONG).show();
+                                } else {
+                                    MainApplication.getInstance().settings.setCustomTheme(importedTheme);
+                                    finish();
+                                }
+                            } catch (Exception e) {
+                                Logger.e(TAG, e);
+                                Toast.makeText(CustomThemeListActivity.this,
+                                        e.getMessage() != null ? e.getMessage() : e.toString(), Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    });
                 }
-                finish();
-            }
+            });
         }
     }
     

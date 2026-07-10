@@ -35,11 +35,10 @@ import dev.esoc.esochan.common.Async;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.http.interactive.InteractiveException;
-import dev.esoc.esochan.lib.FileDialogActivity;
+import dev.esoc.esochan.lib.AttachmentIconUtils;
 import dev.esoc.esochan.lib.UriFileUtils;
 import dev.esoc.esochan.ui.Clipboard;
 import dev.esoc.esochan.ui.downloading.DownloadStorage;
-import dev.esoc.esochan.ui.AppearanceUtils;
 import dev.esoc.esochan.ui.settings.ApplicationSettings;
 import dev.esoc.esochan.ui.theme.ThemeUtils;
 import android.annotation.SuppressLint;
@@ -54,7 +53,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.ContextMenu;
@@ -73,6 +71,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.content.ContextCompat;
 
 public class PostFormActivity extends Activity implements View.OnClickListener {
     protected static final String TAG = "PostFormActivity";
@@ -110,8 +109,6 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
     private volatile CancellableTask currentTask;
     
     private ArrayList<File> attachments;
-    private String currentPath;
-    
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
@@ -164,7 +161,6 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
         settings.getTheme().setTo(this);
         super.onCreate(savedInstanceState);
         attachments = new ArrayList<File>();
-        currentPath = MainApplication.getInstance().settings.getDownloadDirectory().getAbsolutePath();
         
         ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(PostingService.POSTING_NOTIFICATION_ID);
         
@@ -273,14 +269,7 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
                     Toast.makeText(this, getString(R.string.postform_max_attachments), Toast.LENGTH_LONG).show();
                     return true;
                 }
-                if (!AppearanceUtils.hasAccessStorage(this)) return true;
-                Intent selectFile = new Intent(this, FileDialogActivity.class);
-                selectFile.putExtra(FileDialogActivity.CAN_SELECT_DIR, false);
-                selectFile.putExtra(FileDialogActivity.START_PATH, currentPath);
-                selectFile.putExtra(FileDialogActivity.SELECTION_MODE, FileDialogActivity.SELECTION_MODE_OPEN);
-                if (boardModel.attachmentsFormatFilters != null) {
-                    selectFile.putExtra(FileDialogActivity.FORMAT_FILTER, boardModel.attachmentsFormatFilters);
-                }
+                Intent selectFile = UriFileUtils.createOpenDocumentIntent(boardModel.attachmentsFormatFilters);
                 startActivityForResult(selectFile, REQUEST_CODE_ATTACH_FILE);
                 return true;
             case R.id.menu_attach_gallery:
@@ -288,9 +277,7 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
                     Toast.makeText(this, getString(R.string.postform_max_attachments), Toast.LENGTH_LONG).show();
                     return true;
                 }
-                if (!AppearanceUtils.hasAccessStorage(this)) return true;
-                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                i.setType("image/*");
+                Intent i = UriFileUtils.createImagePickerIntent();
                 startActivityForResult(i, REQUEST_CODE_ATTACH_GALLERY);
                 return true;
         }
@@ -299,23 +286,59 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == RESULT_OK) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
             switch (requestCode) {
                 case REQUEST_CODE_ATTACH_FILE:
-                    String path = data.getStringExtra(FileDialogActivity.RESULT_PATH);
-                    File file = null;
-                    if (path != null) {
-                        file = new File(path);
-                        currentPath = file.getParent();
-                    }
-                    handleFile(file);
+                    importPickedFile(data.getData());
                     break;
                 case REQUEST_CODE_ATTACH_GALLERY:
-                    Uri imageUri = data.getData();
-                    handleFile(UriFileUtils.getFile(this, imageUri));
+                    importPickedFile(data.getData());
                     break;
             }
         }
+    }
+
+    private void importPickedFile(final Uri uri) {
+        Async.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                File importedFile = null;
+                boolean tooLarge = false;
+                boolean unsupported = false;
+                try {
+                    importedFile = UriFileUtils.copyToCache(
+                            getApplicationContext(), uri, UriFileUtils.MAX_ATTACHMENT_BYTES);
+                    unsupported = !UriFileUtils.hasAllowedExtension(
+                            importedFile, boardModel.attachmentsFormatFilters);
+                    if (unsupported && "content".equalsIgnoreCase(uri.getScheme())) importedFile.delete();
+                } catch (UriFileUtils.FileTooLargeException e) {
+                    tooLarge = true;
+                } catch (Exception e) {
+                    Logger.e(TAG, e);
+                }
+
+                final File file = importedFile;
+                final boolean showTooLarge = tooLarge;
+                final boolean showUnsupported = unsupported;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (showTooLarge) {
+                            long maxMb = UriFileUtils.MAX_ATTACHMENT_BYTES / (1024L * 1024L);
+                            Toast.makeText(PostFormActivity.this,
+                                    getString(R.string.postform_attachment_too_large, maxMb), Toast.LENGTH_LONG).show();
+                        } else if (showUnsupported) {
+                            Toast.makeText(PostFormActivity.this,
+                                    R.string.postform_unsupported_attachment, Toast.LENGTH_LONG).show();
+                        } else {
+                            handleFile(file);
+                        }
+                    }
+                });
+            }
+        });
     }
     
     private void send() {
@@ -330,8 +353,8 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
             startPostingService.putExtra(PostingService.EXTRA_PAGE_HASH, hash);
             startPostingService.putExtra(PostingService.EXTRA_SEND_POST_MODEL, sendPostModel);
             startPostingService.putExtra(PostingService.EXTRA_BOARD_MODEL, boardModel);
+            ContextCompat.startForegroundService(this, startPostingService);
             finish();
-            startService(startPostingService);
         }
     }
     
@@ -353,7 +376,7 @@ public class PostFormActivity extends Activity implements View.OnClickListener {
         View removeBtn = view.findViewById(R.id.postform_attachment_remove);
         Bitmap thumb = getBitmap(file.getAbsolutePath());
         if (thumb == null) {
-            thumbView.setImageResource(FileDialogActivity.getDefaultIconResId(file.getName()));
+            thumbView.setImageResource(AttachmentIconUtils.getDefaultIconResId(file.getName()));
         } else {
             thumbView.setImageBitmap(thumb);
         }

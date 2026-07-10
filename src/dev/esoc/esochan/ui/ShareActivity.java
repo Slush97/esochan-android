@@ -28,6 +28,7 @@ import dev.esoc.esochan.api.models.SendPostModel;
 import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.api.util.ChanModels;
 import dev.esoc.esochan.cache.SerializablePage;
+import dev.esoc.esochan.common.Async;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.lib.UriFileUtils;
@@ -118,21 +119,53 @@ public class ShareActivity extends ListActivity {
             return;
         }
         selectedFile = null;
+        Uri sharedUri = null;
         if (intent != null) {
-            Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-            if (uri != null) {
-                File file = UriFileUtils.getFile(this, uri);
-                if (file != null) {
-                    selectedFile = file;
-                }
-            }
+            sharedUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         }
-        if (selectedFile == null) {
+        if (sharedUri == null) {
             Toast.makeText(this, R.string.postform_cannot_attach, Toast.LENGTH_LONG).show();
             finish();
             return;
         }
-        setListAdapter(adapter);
+        final Uri uri = sharedUri;
+        Async.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                File importedFile = null;
+                boolean tooLarge = false;
+                try {
+                    importedFile = UriFileUtils.copyToCache(
+                            getApplicationContext(), uri, UriFileUtils.MAX_ATTACHMENT_BYTES);
+                } catch (UriFileUtils.FileTooLargeException e) {
+                    tooLarge = true;
+                } catch (Exception e) {
+                    Logger.e(TAG, e);
+                }
+
+                final File file = importedFile;
+                final boolean showTooLarge = tooLarge;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (showTooLarge) {
+                            long maxMb = UriFileUtils.MAX_ATTACHMENT_BYTES / (1024L * 1024L);
+                            Toast.makeText(ShareActivity.this,
+                                    getString(R.string.postform_attachment_too_large, maxMb), Toast.LENGTH_LONG).show();
+                            finish();
+                        } else if (file == null) {
+                            Toast.makeText(ShareActivity.this,
+                                    R.string.postform_cannot_attach, Toast.LENGTH_LONG).show();
+                            finish();
+                        } else {
+                            selectedFile = file;
+                            setListAdapter(adapter);
+                        }
+                    }
+                });
+            }
+        });
     }
     
     @Override
@@ -155,6 +188,10 @@ public class ShareActivity extends ListActivity {
         }
         
         BoardModel boardModel = item.getRight().boardModel;
+        if (!UriFileUtils.hasAllowedExtension(selectedFile, boardModel.attachmentsFormatFilters)) {
+            Toast.makeText(this, R.string.postform_unsupported_attachment, Toast.LENGTH_LONG).show();
+            return;
+        }
         int attachmentsCount = draft.attachments == null ? 0 : draft.attachments.length;
         ++attachmentsCount;
         if (attachmentsCount > boardModel.attachmentsMaxCount) {

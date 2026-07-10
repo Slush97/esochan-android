@@ -23,6 +23,7 @@ import android.app.Dialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.util.TypedValue
@@ -38,6 +39,9 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -50,9 +54,11 @@ import dev.esoc.esochan.common.Async
 import dev.esoc.esochan.common.Logger
 import dev.esoc.esochan.common.MainApplication
 import dev.esoc.esochan.http.interactive.InteractiveException
-import dev.esoc.esochan.lib.FileDialogActivity
+import dev.esoc.esochan.lib.AttachmentIconUtils
 import dev.esoc.esochan.lib.UriFileUtils
-import dev.esoc.esochan.ui.AppearanceUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class PostFormFragment : BottomSheetDialogFragment() {
@@ -62,9 +68,6 @@ class PostFormFragment : BottomSheetDialogFragment() {
         private const val ARG_HASH = "hash"
         private const val ARG_BOARD_MODEL = "board_model"
         private const val ARG_SEND_POST_MODEL = "send_post_model"
-
-        private const val REQUEST_CODE_ATTACH_FILE = 11
-        private const val REQUEST_CODE_ATTACH_GALLERY = 12
 
         fun newInstance(hash: String, boardModel: BoardModel, sendPostModel: SendPostModel): PostFormFragment {
             return PostFormFragment().apply {
@@ -85,7 +88,12 @@ class PostFormFragment : BottomSheetDialogFragment() {
 
     private var currentTask: CancellableTask? = null
     private val attachments = ArrayList<File>()
-    private var currentPath: String = ""
+    private val attachmentPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) result.data?.data?.let(::importPickedFile)
+    }
+    private val galleryPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) result.data?.data?.let(::importPickedFile)
+    }
 
     // Views
     private lateinit var commentField: EditText
@@ -111,7 +119,6 @@ class PostFormFragment : BottomSheetDialogFragment() {
         hash = args.getString(ARG_HASH)!!
         boardModel = args.getSerializable(ARG_BOARD_MODEL) as BoardModel
         sendPostModel = args.getSerializable(ARG_SEND_POST_MODEL) as SendPostModel
-        currentPath = settings.downloadDirectory.absolutePath
     }
 
     override fun getTheme(): Int = R.style.ThemeOverlay_BottomSheetDialog
@@ -374,7 +381,7 @@ class PostFormFragment : BottomSheetDialogFragment() {
                     putExtra(PostingService.EXTRA_SEND_POST_MODEL, sendPostModel)
                     putExtra(PostingService.EXTRA_BOARD_MODEL, boardModel)
                 }
-                requireContext().startService(intent)
+                ContextCompat.startForegroundService(requireContext(), intent)
                 dismiss()
             }
         }
@@ -503,17 +510,7 @@ class PostFormFragment : BottomSheetDialogFragment() {
             Toast.makeText(requireContext(), R.string.postform_max_attachments, Toast.LENGTH_LONG).show()
             return
         }
-        if (!AppearanceUtils.hasAccessStorage(requireActivity())) return
-        val intent = Intent(requireContext(), FileDialogActivity::class.java).apply {
-            putExtra(FileDialogActivity.CAN_SELECT_DIR, false)
-            putExtra(FileDialogActivity.START_PATH, currentPath)
-            putExtra(FileDialogActivity.SELECTION_MODE, FileDialogActivity.SELECTION_MODE_OPEN)
-            if (boardModel.attachmentsFormatFilters != null) {
-                putExtra(FileDialogActivity.FORMAT_FILTER, boardModel.attachmentsFormatFilters)
-            }
-        }
-        @Suppress("DEPRECATION")
-        startActivityForResult(intent, REQUEST_CODE_ATTACH_FILE)
+        attachmentPicker.launch(UriFileUtils.createOpenDocumentIntent(boardModel.attachmentsFormatFilters))
     }
 
     private fun attachGallery() {
@@ -521,26 +518,37 @@ class PostFormFragment : BottomSheetDialogFragment() {
             Toast.makeText(requireContext(), R.string.postform_max_attachments, Toast.LENGTH_LONG).show()
             return
         }
-        if (!AppearanceUtils.hasAccessStorage(requireActivity())) return
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
-        @Suppress("DEPRECATION")
-        startActivityForResult(intent, REQUEST_CODE_ATTACH_GALLERY)
+        galleryPicker.launch(UriFileUtils.createImagePickerIntent())
     }
 
-    @Deprecated("Deprecated in Java")
-    @Suppress("DEPRECATION")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode != Activity.RESULT_OK || data == null) return
-        when (requestCode) {
-            REQUEST_CODE_ATTACH_FILE -> {
-                val path = data.getStringExtra(FileDialogActivity.RESULT_PATH) ?: return
-                val file = File(path)
-                currentPath = file.parent ?: currentPath
-                handleFile(file)
+    private fun importPickedFile(uri: Uri) {
+        val appContext = requireContext().applicationContext
+        lifecycleScope.launch {
+            val file = try {
+                withContext(Dispatchers.IO) {
+                    UriFileUtils.copyToCache(appContext, uri, UriFileUtils.MAX_ATTACHMENT_BYTES)
+                }
+            } catch (_: UriFileUtils.FileTooLargeException) {
+                if (isAdded) {
+                    val maxMb = UriFileUtils.MAX_ATTACHMENT_BYTES / (1024L * 1024L)
+                    Toast.makeText(requireContext(), getString(R.string.postform_attachment_too_large, maxMb), Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            } catch (e: Exception) {
+                Logger.e(TAG, e)
+                if (isAdded) Toast.makeText(requireContext(), R.string.postform_cannot_attach, Toast.LENGTH_LONG).show()
+                return@launch
             }
-            REQUEST_CODE_ATTACH_GALLERY -> {
-                val uri = data.data ?: return
-                handleFile(UriFileUtils.getFile(requireContext(), uri))
+
+            if (!UriFileUtils.hasAllowedExtension(file, boardModel.attachmentsFormatFilters)) {
+                if (uri.scheme == "content") file.delete()
+                if (isAdded) Toast.makeText(requireContext(), R.string.postform_unsupported_attachment, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            if (isAdded && view != null) {
+                handleFile(file)
+            } else if (uri.scheme == "content") {
+                file.delete()
             }
         }
     }
@@ -566,7 +574,7 @@ class PostFormFragment : BottomSheetDialogFragment() {
 
         val thumb = getBitmap(file.absolutePath)
         if (thumb == null) {
-            thumbView.setImageResource(FileDialogActivity.getDefaultIconResId(file.name))
+            thumbView.setImageResource(AttachmentIconUtils.getDefaultIconResId(file.name))
         } else {
             thumbView.setImageBitmap(thumb)
         }
