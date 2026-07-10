@@ -19,7 +19,6 @@
 package dev.esoc.esochan.ui.tabs;
 
 import java.net.URLDecoder;
-import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
@@ -165,21 +164,19 @@ public class UrlHandler {
     
     public static UrlPageModel getPageModel(String url) {
         if (Uri.parse(url).getScheme() == null) url = "http://" + url;
-        List<ChanModule> chans = MainApplication.getInstance().chanModulesList;
-        for (int i=0, size=chans.size(); i<size; ++i) {
-            ChanModule chan = chans.get(i);
-            try {
-                UrlPageModel pageModel = chan.parseUrl(url);
-                String redirectedUrl = chan.buildUrl(pageModel);
-                if (url.equals(redirectedUrl) || checkUrlBelongsChanAndCorrect(redirectedUrl, chan)) {
-                    MainApplication.getInstance().settings.unlockChan(pageModel.chanName, true);
-                    return pageModel;
-                } else {
-                    return getPageModel(redirectedUrl);
-                }
-            } catch (Exception e) {/* url не распознался данным чаном, пробуем следующий */}
+        ChanModule chan = MainApplication.getInstance().getChanModule();
+        try {
+            UrlPageModel pageModel = chan.parseUrl(url);
+            String redirectedUrl = chan.buildUrl(pageModel);
+            if (url.equals(redirectedUrl) || checkUrlBelongsChanAndCorrect(redirectedUrl, chan)) {
+                MainApplication.getInstance().settings.unlockChan(pageModel.chanName, true);
+                return pageModel;
+            } else {
+                return getPageModel(redirectedUrl);
+            }
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
     
     public static void launchExternalBrowser(Context context, String url) {

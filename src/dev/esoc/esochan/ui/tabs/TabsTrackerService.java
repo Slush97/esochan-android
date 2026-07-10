@@ -20,6 +20,9 @@ package dev.esoc.esochan.ui.tabs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 import dev.esoc.esochan.common.Tuples.Triple;
@@ -43,7 +46,6 @@ import dev.esoc.esochan.ui.presentation.BoardFragment;
 import dev.esoc.esochan.ui.presentation.PresentationModel;
 import dev.esoc.esochan.ui.settings.ApplicationSettings;
 import dev.esoc.esochan.ui.settings.Wifi;
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -52,12 +54,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.ServiceInfo;
 import android.net.Uri;
-import android.os.Build;
 import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 
 /**
  * Сервис автообновления
@@ -79,7 +80,7 @@ public class TabsTrackerService extends Service {
     public static final int TRACKER_NOTIFICATION_SUBSCRIPTIONS_ID = 50;
     
     /** true, если сервис сейчас работает */
-    private static boolean running = false;
+    private static volatile boolean running = false;
     /** если true, в заголовке уведомления будет написано "есть новые сообщения" */
     private static boolean unread = false;
     /** если true, выведется уведомление об ответе на отслеживаемые посты */
@@ -87,16 +88,28 @@ public class TabsTrackerService extends Service {
     /** список тредов, в которых есть ответы на отслеживаемые посты (triple: url вкладки, url со ссылкой на пост, заголовок вкладки) */
     private static List<Triple<String, String, String>> subscriptionsData = null;
     /** ID вкладки, которая обновляется в данный момент или -1 */
-    private static long currentUpdatingTabId = -1;
-    
-    /** true, если сервис сейчас работает */
-    public static boolean isRunning() {
-        return running;
+    private static volatile long currentUpdatingTabId = -1;
+
+    /** Keep high-frequency tracking scoped to the visible main UI. */
+    public static void syncWithVisibleUi(Context context) {
+        if (MainActivity.isUiStarted()
+                && MainApplication.getInstance().settings.isAutoupdateEnabled()) {
+            context.startService(new Intent(context, TabsTrackerService.class));
+        } else {
+            context.stopService(new Intent(context, TabsTrackerService.class));
+        }
+    }
+
+    /** Request one update while the main UI is visible. */
+    public static void requestImmediateUpdate(Context context) {
+        if (!MainActivity.isUiStarted()) return;
+        context.startService(new Intent(context, TabsTrackerService.class)
+                .putExtra(EXTRA_UPDATE_IMMEDIATELY, true));
     }
     
     /**
      * Record a reply to a tracked post.
-     * Background: system notification. Foreground: in-app toast only (no dual alert).
+     * Resumed UI: in-app toast. Started but not resumed: system notification.
      */
     public static void addSubscriptionNotification(String tabUrl, String postNumber, String tabTitle) {
         List<Triple<String, String, String>> list = subscriptionsData;
@@ -184,35 +197,41 @@ public class TabsTrackerService extends Service {
     private PagesCache pagesCache;
     private NotificationManager notificationManager;
     private BroadcastReceiver broadcastReceiver;
-    private boolean isForeground = false;
-    
-    private int timerDelay;
-    private boolean enableNotification;
-    private boolean backgroundTabs;
-    
-    private boolean immediately = false;
+    private volatile int timerDelay;
+    private volatile boolean enableNotification;
+    private volatile boolean backgroundTabs;
+    private final AtomicBoolean updateImmediately = new AtomicBoolean(false);
     
     private CancellableTask task = null;
-    
-    private void notifyForeground(int id, Notification notification) {
-        if (!isForeground) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-            } else {
-                startForeground(id, notification);
-            }
-            isForeground = true;
-        } else {
-            notificationManager.notify(id, notification);
+
+    private static class TrackingSnapshot {
+        final TabModel[] tabs;
+        final Long selectedTabId;
+
+        TrackingSnapshot(TabModel[] tabs, Long selectedTabId) {
+            this.tabs = tabs;
+            this.selectedTabId = selectedTabId;
         }
     }
 
-    private void cancelForeground(int id) {
-        if (isForeground) {
-            stopForeground(STOP_FOREGROUND_REMOVE);
-            isForeground = false;
-        } else {
-            notificationManager.cancel(id);
+    private void cancelUpdateNotification() {
+        notificationManager.cancel(TRACKER_NOTIFICATION_UPDATE_ID);
+    }
+
+    private TrackingSnapshot getTrackingSnapshot() {
+        FutureTask<TrackingSnapshot> snapshotTask = new FutureTask<>(() ->
+                new TrackingSnapshot(
+                        tabsState.tabsArray.toArray(new TabModel[0]),
+                        tabsSwitcher.currentId));
+        Async.runOnUiThread(snapshotTask);
+        try {
+            return snapshotTask.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (ExecutionException e) {
+            Logger.e(TAG, "Unable to snapshot tabs for auto-update", e);
+            return null;
         }
     }
     
@@ -234,42 +253,43 @@ public class TabsTrackerService extends Service {
         }, new IntentFilter(BROADCAST_ACTION_CLEAR_SUBSCRIPTIONS), ContextCompat.RECEIVER_NOT_EXPORTED);
     }
     
-    @SuppressLint("InlinedApi")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        onStart(intent, startId);
-        return Service.START_STICKY;
-    }
-    
-    @Override
-    public void onStart(Intent intent, int startId) {
         Logger.d(TAG, "TabsTrackerService starting");
+        boolean immediate = intent != null && intent.getBooleanExtra(EXTRA_UPDATE_IMMEDIATELY, false);
+        if (!MainActivity.isUiStarted() || (!settings.isAutoupdateEnabled() && !immediate)) {
+            stopSelfResult(startId);
+            return Service.START_NOT_STICKY;
+        }
+
         enableNotification = settings.isAutoupdateNotification();
-        immediately = intent != null && intent.getBooleanExtra(EXTRA_UPDATE_IMMEDIATELY, false);
         backgroundTabs = settings.isAutoupdateBackground();
         timerDelay = settings.getAutoupdateDelay();
+        if (!enableNotification) cancelUpdateNotification();
+        if (immediate) updateImmediately.set(true);
         if (running) {
-            Logger.d(TAG, "TabsTrackerService service already running");
-            return;
+            Logger.d(TAG, "TabsTrackerService reconfigured while running");
+            return Service.START_NOT_STICKY;
         }
         clearUnread();
         clearSubscriptions();
         TrackerLoop loop = new TrackerLoop();
         task = loop;
-        Async.runAsync(loop);
         running = true;
+        Async.runAsync(loop);
+        return Service.START_NOT_STICKY;
     }
     
-    private void doUpdate(final CancellableTask task) {
-        if (backgroundTabs || immediately) {
-            int tabsArrayLength = tabsState.tabsArray.size();
-            TabModel[] tabsArray = new TabModel[tabsArrayLength]; //avoid of java.util.ConcurrentModificationException
-            for (int i=0; i<tabsArrayLength; ++i) tabsArray[i] = tabsState.tabsArray.get(i);
-            for (final TabModel tab : tabsArray) {
+    private void doUpdate(final CancellableTask task, boolean immediate) {
+        TrackingSnapshot snapshot = getTrackingSnapshot();
+        if (snapshot == null || task.isCancelled()) return;
+
+        if (backgroundTabs || immediate) {
+            for (final TabModel tab : snapshot.tabs) {
                 if (task.isCancelled()) return;
-                if (settings.isAutoupdateWifiOnly() && !Wifi.isConnected() && !immediately) return;
+                if (settings.isAutoupdateWifiOnly() && !Wifi.isConnected() && !immediate) return;
                 if (tab.type == TabModel.TYPE_NORMAL && tab.pageModel.type == UrlPageModel.TYPE_THREADPAGE && tab.autoupdateBackground) {
-                    if (tabsSwitcher.currentId != null && tabsSwitcher.currentId.equals(tab.id)) continue;
+                    if (snapshot.selectedTabId != null && snapshot.selectedTabId.equals(tab.id)) continue;
                     final String hash = tab.hash;
                     ChanModule chan = MainApplication.getInstance().getChanModule(tab.pageModel.chanName);
                     currentUpdatingTabId = tab.id;
@@ -325,22 +345,27 @@ public class TabsTrackerService extends Service {
             currentUpdatingTabId = -1;
         }
         if (task.isCancelled()) return;
-        if (settings.isAutoupdateWifiOnly() && !Wifi.isConnected() && !immediately) return;
-        if (tabsSwitcher.currentFragment instanceof BoardFragment) {
-            TabModel tab = tabsState.findTabById(tabsSwitcher.currentId);
-            if (tab != null && tab.pageModel != null && tab.type == TabModel.TYPE_NORMAL && tab.pageModel.type == UrlPageModel.TYPE_THREADPAGE) {
-                Async.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            ((BoardFragment) tabsSwitcher.currentFragment).updateSilent();
-                        } catch (Exception e) {
-                            Logger.e(TAG, e);
-                        }
+        if (settings.isAutoupdateWifiOnly() && !Wifi.isConnected() && !immediate) return;
+        Async.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Fragment currentFragment = tabsSwitcher.getCurrentFragment();
+                if (task.isCancelled() || !MainActivity.isUiStarted()
+                        || !(currentFragment instanceof BoardFragment)
+                        || tabsSwitcher.currentId == null) {
+                    return;
+                }
+                TabModel tab = tabsState.findTabById(tabsSwitcher.currentId);
+                if (tab != null && tab.pageModel != null && tab.type == TabModel.TYPE_NORMAL
+                        && tab.pageModel.type == UrlPageModel.TYPE_THREADPAGE) {
+                    try {
+                        ((BoardFragment) currentFragment).updateSilent();
+                    } catch (Exception e) {
+                        Logger.e(TAG, e);
                     }
-                });
+                }
             }
-        }
+        });
     }
     
     private class TrackerLoop extends BaseCancellableTask implements Runnable {
@@ -348,42 +373,47 @@ public class TabsTrackerService extends Service {
         
         @Override
         public void run() {
-            while (true) {
-                if (isCancelled()) {
-                    cancelForeground(TRACKER_NOTIFICATION_UPDATE_ID);
-                    return;
-                }
-                Notification subscriptionsNotification = getSubscriptionsNotification();
-                if (subscriptionsNotification != null)
-                    notificationManager.notify(TRACKER_NOTIFICATION_SUBSCRIPTIONS_ID, subscriptionsNotification);
-                
-                if (++timerCounter > timerDelay || immediately) {
-                    timerCounter = 0;
-                    if (enableNotification) {
-                        notifyForeground(TRACKER_NOTIFICATION_UPDATE_ID, getUpdateNotification(-1));
+            try {
+                while (!isCancelled() && MainActivity.isUiStarted()) {
+                    Notification subscriptionsNotification = getSubscriptionsNotification();
+                    if (subscriptionsNotification != null) {
+                        notificationManager.notify(TRACKER_NOTIFICATION_SUBSCRIPTIONS_ID, subscriptionsNotification);
                     }
-                    if (!settings.isAutoupdateWifiOnly() || Wifi.isConnected() || immediately) {
-                        doUpdate(this);
-                        immediately = false;
-                    }
-                    
-                    if (isCancelled()) {
-                        cancelForeground(TRACKER_NOTIFICATION_UPDATE_ID);
-                        return;
-                    } else {
+
+                    boolean immediate = updateImmediately.getAndSet(false);
+                    if (++timerCounter > timerDelay || immediate) {
+                        timerCounter = 0;
+                        if (enableNotification) {
+                            notificationManager.notify(TRACKER_NOTIFICATION_UPDATE_ID, getUpdateNotification(-1));
+                        }
+                        if (!settings.isAutoupdateWifiOnly() || Wifi.isConnected() || immediate) {
+                            doUpdate(this, immediate);
+                        }
+
+                        if (isCancelled() || !MainActivity.isUiStarted()) {
+                            return;
+                        }
                         InternalBroadcasts.send(TabsTrackerService.this, BROADCAST_ACTION_NOTIFY);
+
+                        if (!settings.isAutoupdateEnabled()) {
+                            return;
+                        }
+                    } else {
+                        if (enableNotification) {
+                            int remainingTime = timerDelay - timerCounter + 1;
+                            notificationManager.notify(
+                                    TRACKER_NOTIFICATION_UPDATE_ID,
+                                    getUpdateNotification(remainingTime));
+                        }
                     }
-                    
-                    if (!settings.isAutoupdateEnabled()) stopSelf();
-                    
-                } else {
-                   if (enableNotification) {
-                       int remainingTime = timerDelay - timerCounter + 1;
-                       notifyForeground(TRACKER_NOTIFICATION_UPDATE_ID, getUpdateNotification(remainingTime));
-                   }
+
+                    LockSupport.parkNanos(1000000000);
                 }
-                
-                LockSupport.parkNanos(1000000000);
+            } finally {
+                currentUpdatingTabId = -1;
+                running = false;
+                cancelUpdateNotification();
+                stopSelf();
             }
         }
         
@@ -420,6 +450,7 @@ public class TabsTrackerService extends Service {
         
         private NotificationCompat.Builder notifUpdate = new NotificationCompat.Builder(TabsTrackerService.this, "tabs_tracker").
                 setSmallIcon(R.mipmap.ic_launcher).
+                setOngoing(true).
                 setCategory(NotificationCompat.CATEGORY_SERVICE).
                 setContentIntent(PendingIntent.getActivity(
                         TabsTrackerService.this, 0, new Intent(TabsTrackerService.this, MainActivity.class), PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE));
@@ -443,7 +474,10 @@ public class TabsTrackerService extends Service {
         Logger.d(TAG, "TabsTrackerService destroying");
         if (task != null) task.cancel();
         running = false;
+        currentUpdatingTabId = -1;
+        cancelUpdateNotification();
         unregisterReceiver(broadcastReceiver);
+        super.onDestroy();
     }
     
     @Override

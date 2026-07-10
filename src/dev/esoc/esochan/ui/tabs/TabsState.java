@@ -20,7 +20,6 @@ package dev.esoc.esochan.ui.tabs;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 
 import com.esotericsoftware.kryo.kryo5.serializers.TaggedFieldSerializer.Tag;
 
@@ -54,15 +53,20 @@ public class TabsState implements Serializable {
      * @return модель вкладки или null если вкладка отсутствует
      */
     public TabModel findTabById(long id) {
-        try {
-            for (TabModel model : tabsArray) {
-                if (model.id == id) {
-                    return model;
-                }
+        for (TabModel model : snapshotTabs()) {
+            if (model != null && model.id == id) {
+                return model;
             }
-        } catch (ConcurrentModificationException e) {
-            return findTabById(id); //try again
         }
         return null;
+    }
+
+    /** Returns a bounded snapshot suitable for readers that do not own the UI list. */
+    public TabModel[] snapshotTabs() {
+        ArrayList<TabModel> tabs = tabsArray;
+        if (tabs == null) return new TabModel[0];
+        synchronized (tabs) {
+            return tabs.toArray(new TabModel[0]);
+        }
     }
 }

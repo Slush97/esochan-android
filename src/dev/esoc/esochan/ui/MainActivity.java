@@ -28,7 +28,7 @@ import dev.esoc.esochan.api.models.UrlPageModel;
 import dev.esoc.esochan.common.Async;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
-import dev.esoc.esochan.http.client.ExtendedTrustManager;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -115,10 +115,16 @@ public class MainActivity extends AppCompatActivity {
     private boolean isPaused = false;
     private boolean isDestroyed = false;
     private static volatile boolean uiResumed = false;
+    private static volatile boolean uiStarted = false;
 
     /** True while MainActivity is resumed (app UI visible). Used to prefer in-app reply toasts over system notifications. */
     public static boolean isUiResumed() {
         return uiResumed;
+    }
+
+    /** True while MainActivity is started and high-frequency tab tracking may run. */
+    public static boolean isUiStarted() {
+        return uiStarted;
     }
     
     private DrawerLayout drawerLayout;
@@ -422,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
                 tabsAdapter.notifyDataSetChanged();
                 return true;
             case R.id.context_menu_autoupdate_now:
-                startService(new Intent(this, TabsTrackerService.class).putExtra(TabsTrackerService.EXTRA_UPDATE_IMMEDIATELY, true));
+                TabsTrackerService.requestImmediateUpdate(this);
                 return true;
         }
         return false;
@@ -450,6 +456,18 @@ public class MainActivity extends AppCompatActivity {
         isHorizontalOrientation = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         (theme = MainApplication.getInstance().settings.getTheme()).setTo(this);
         super.onCreate(savedInstanceState);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (handleBackNavigation()) return;
+                setEnabled(false);
+                try {
+                    getOnBackPressedDispatcher().onBackPressed();
+                } finally {
+                    setEnabled(true);
+                }
+            }
+        });
         if (MainApplication.getInstance().settings.showSidePanel()) {
             setContentView(tabsPanelRight ? R.layout.main_activity_tablet_right : R.layout.main_activity_tablet);
             LinearLayout.LayoutParams sidebarLayoutParams = (LinearLayout.LayoutParams) findViewById(R.id.sidebar).getLayoutParams();
@@ -537,32 +555,31 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(TabsTrackerService.BROADCAST_ACTION_NOTIFY);
         intentFilter.addAction(TabsTrackerService.BROADCAST_ACTION_SUBSCRIPTION_REPLY);
         
-        if (!TabsTrackerService.isRunning() && MainApplication.getInstance().settings.isAutoupdateEnabled())
-            startService(new Intent(this, TabsTrackerService.class));
-        
         if (MainApplication.getInstance().settings.isSFWRelease()) NewsReader.checkNews(this);
     }
     
     @Override
     protected void onStart() {
         super.onStart();
+        uiStarted = true;
         ContextCompat.registerReceiver(this, broadcastReceiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED);
         tabsAdapter.notifyDataSetChanged(false);
-        ExtendedTrustManager.bindActivity(this);
+        TabsTrackerService.syncWithVisibleUi(this);
     }
     
     @Override
     protected void onStop() {
-        super.onStop();
+        uiStarted = false;
+        TabsTrackerService.syncWithVisibleUi(this);
         unregisterReceiver(broadcastReceiver);
-        ExtendedTrustManager.unbindActivity();
+        super.onStop();
     }
     
     @Override
     protected void onDestroy() {
         super.onDestroy();
         MainApplication.getInstance().tabsSwitcher.currentId = null;
-        MainApplication.getInstance().tabsSwitcher.currentFragment = null;
+        MainApplication.getInstance().tabsSwitcher.clearCurrentFragment();
         isDestroyed = true;
         Logger.d(TAG, "main activity destroyed");
     }
@@ -654,7 +671,7 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void reloadCurrentBoardFragment() {
-        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
         if (currentFragment instanceof BoardFragment) {
             Long id = MainApplication.getInstance().tabsSwitcher.currentId;
             if (id != null) {
@@ -666,7 +683,7 @@ public class MainActivity extends AppCompatActivity {
     
     private void restartActivity() {
         MainApplication.getInstance().tabsSwitcher.currentId = null;
-        MainApplication.getInstance().tabsSwitcher.currentFragment = null;
+        MainApplication.getInstance().tabsSwitcher.clearCurrentFragment();
         // https://code.google.com/p/android/issues/detail?id=93731
         Async.runAsync(new Runnable() {
             @Override
@@ -919,7 +936,7 @@ public class MainActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (settings.scrollVolumeButtons) {
                     try {
-                        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                         if (currentFragment instanceof BoardFragment) {
                             BoardFragment boardFragment = (BoardFragment) currentFragment;
                             if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) boardFragment.scrollUp(); else boardFragment.scrollDown();
@@ -930,9 +947,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 break;
-            case KeyEvent.KEYCODE_BACK:
-                if (onBack()) return true;
-                break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if (focusActionBar()) return true;
                 break;
@@ -940,7 +954,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
     
-    private boolean onBack() {
+    private boolean handleBackNavigation() {
         if (tabsAdapter != null && tabsAdapter.getDraggingItem() != -1) {
             tabsAdapter.setDraggingItem(-1);
             return true;
@@ -1007,10 +1021,11 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
         }
+        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
         if (MainApplication.getInstance().tabsSwitcher.currentId != null &&
                 MainApplication.getInstance().tabsSwitcher.currentId.equals(Long.valueOf(TabModel.POSITION_FAVORITES)) &&
-                MainApplication.getInstance().tabsSwitcher.currentFragment instanceof FavoritesFragment) {
-            ((FavoritesFragment) MainApplication.getInstance().tabsSwitcher.currentFragment).update();
+                currentFragment instanceof FavoritesFragment) {
+            ((FavoritesFragment) currentFragment).update();
         }
     }
     

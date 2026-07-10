@@ -23,6 +23,7 @@ import android.view.MenuItem;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
@@ -41,6 +42,19 @@ public class PreferencesActivity extends AppCompatActivity
         getTheme().applyStyle(R.style.Theme_Preferences_NoActionBar, true);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preferences);
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (popPreferenceScreen()) return;
+                setEnabled(false);
+                try {
+                    getOnBackPressedDispatcher().onBackPressed();
+                } finally {
+                    setEnabled(true);
+                }
+            }
+        });
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -66,23 +80,15 @@ public class PreferencesActivity extends AppCompatActivity
         return false;
     }
 
-    @Override
-    public void onBackPressed() {
+    private boolean popPreferenceScreen() {
         Fragment current = getSupportFragmentManager().findFragmentById(R.id.preferences_container);
-        if (current instanceof PreferencesFragment && ((PreferencesFragment) current).popScreen()) {
-            return;
-        }
-        super.onBackPressed();
+        return current instanceof PreferencesFragment && ((PreferencesFragment) current).popScreen();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            Fragment current = getSupportFragmentManager().findFragmentById(R.id.preferences_container);
-            if (current instanceof PreferencesFragment && ((PreferencesFragment) current).popScreen()) {
-                return true;
-            }
-            finish();
+            getOnBackPressedDispatcher().onBackPressed();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -90,11 +96,7 @@ public class PreferencesActivity extends AppCompatActivity
 
     @Override
     public boolean onSupportNavigateUp() {
-        Fragment current = getSupportFragmentManager().findFragmentById(R.id.preferences_container);
-        if (current instanceof PreferencesFragment && ((PreferencesFragment) current).popScreen()) {
-            return true;
-        }
-        finish();
+        getOnBackPressedDispatcher().onBackPressed();
         return true;
     }
 
