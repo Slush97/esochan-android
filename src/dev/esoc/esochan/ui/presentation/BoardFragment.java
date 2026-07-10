@@ -218,6 +218,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
     private View searchBarView;
     
     private boolean searchBarInitialized = false;
+    private TextWatcher searchTextChangedListener;
     private String cachedSearchRequest = null;
     private List<Integer> cachedSearchResults = null;
     private SparseArray<Spanned> cachedSearchHighlightedSpanables = null;
@@ -429,18 +430,6 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         super.onDestroy();
         
         presentationModel = null; //если фрагмент всё-таки не уничтожится, позволить GC убрать хотя бы основные данные
-        
-        finalizeSearchBar();
-        if (listView != null) {
-            listView.setOnCreateContextMenuListener(null);
-            listView.setOnItemClickListener(null);
-            listView.setOnTouchListener(null);
-            listView.setOnScrollListener(null);
-            listView.setAdapter(null);
-        }
-        if (pullableLayout != null) {
-            pullableLayout.setOnRefreshListener(null);
-        }
         
         if (tabModel != null && tabModel.type == TabModel.TYPE_LOCAL) {
             try {
@@ -972,12 +961,39 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
     
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
-        viewModel.cancelLoad();
+        if (viewModel != null) viewModel.cancelLoad();
         if (imagesDownloadTask != null) {
             imagesDownloadTask.cancel();
         }
         saveCurrentPostPosition();
+
+        finalizeSearchBar();
+        if (listView != null) {
+            unregisterForContextMenu(listView);
+            listView.setOnCreateContextMenuListener(null);
+            listView.setOnItemClickListener(null);
+            listView.setOnTouchListener(null);
+            listView.setOnScrollListener(null);
+            listView.setAdapter(null);
+        }
+        if (pullableLayout != null) pullableLayout.setOnRefreshListener(null);
+        if (binding != null) binding.boardFabPost.setOnClickListener(null);
+
+        binding = null;
+        rootView = null;
+        loadingView = null;
+        errorView = null;
+        errorTextView = null;
+        pullableLayout = null;
+        listView = null;
+        adapter = null;
+        navigationBarView = null;
+        catalogBarView = null;
+        searchBarView = null;
+        imageGetter = null;
+        floatingModels = null;
+        lastContextMenuAttachment = null;
+        super.onDestroyView();
     }
     
     private void saveCurrentPostPosition() {
@@ -1650,7 +1666,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
                 BoardFragment fragment = fragmentRef.get();
                 if (fragment == null || fragment.presentationModel == null) {
-                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                     if (currentFragment instanceof BoardFragment) fragment = (BoardFragment) currentFragment;
                 }
                 if (fragment != null) {
@@ -1692,7 +1708,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             public void onClick(View v) {
                 BoardFragment fragment = fragmentRef.get();
                 if (fragment == null || fragment.presentationModel == null) {
-                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                     if (currentFragment instanceof BoardFragment) fragment = (BoardFragment) currentFragment;
                 }
                 if (fragment != null) fragment.openAttachment((AttachmentModel)v.getTag());
@@ -2419,7 +2435,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 CancellableTask imagesDownloadTask = fragment.imagesDownloadTask;
                 ExecutorService imagesDownloadExecutor = fragment.imagesDownloadExecutor;
                 if (fragment.presentationModel == null) {
-                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                     if (currentFragment instanceof BoardFragment) {
                         imagesDownloadTask = ((BoardFragment) currentFragment).imagesDownloadTask;
                         imagesDownloadExecutor = ((BoardFragment) currentFragment).imagesDownloadExecutor;
@@ -2457,7 +2473,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
             CancellableTask imagesDownloadTask = fragment.imagesDownloadTask;
             ExecutorService imagesDownloadExecutor = fragment.imagesDownloadExecutor;
             if (fragment.presentationModel == null) {
-                Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                 if (currentFragment instanceof BoardFragment) {
                     imagesDownloadTask = ((BoardFragment) currentFragment).imagesDownloadTask;
                     imagesDownloadExecutor = ((BoardFragment) currentFragment).imagesDownloadExecutor;
@@ -2853,7 +2869,8 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 return false;
             }
         });
-        field.addTextChangedListener(new OnSearchTextChangedListener(this));
+        searchTextChangedListener = new OnSearchTextChangedListener(this);
+        field.addTextChangedListener(searchTextChangedListener);
         field.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
         if (resources.getDimensionPixelSize(R.dimen.panel_height) < field.getMeasuredHeight())
             searchBarView.getLayoutParams().height = field.getMeasuredHeight();
@@ -2914,6 +2931,11 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         binding.boardSearchNext.setOnClickListener(null);
         final EditText field = binding.boardSearchField;
         field.setOnKeyListener(null);
+        if (searchTextChangedListener != null) {
+            field.removeTextChangedListener(searchTextChangedListener);
+            searchTextChangedListener = null;
+        }
+        searchBarInitialized = false;
     }
     
     private void openPostForm(String hash, BoardModel boardModel, SendPostModel sendPostModel) {
@@ -3556,7 +3578,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                         @Override
                         public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
                             if (presentationModel == null) {
-                                Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                                Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                                 if (currentFragment instanceof BoardFragment) {
                                     currentFragment.onCreateContextMenu(menu, v, menuInfo);
                                 }
@@ -3578,7 +3600,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 } else {
                     BoardFragment fragment = BoardFragment.this;
                     if (presentationModel == null) {
-                        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                        Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                         if (currentFragment instanceof BoardFragment) fragment = (BoardFragment) currentFragment;
                     }
                     fragment.openAttachment((AttachmentModel) v.getTag());
@@ -3597,7 +3619,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                 CancellableTask imagesDownloadTask = BoardFragment.this.imagesDownloadTask;
                 ExecutorService imagesDownloadExecutor = BoardFragment.this.imagesDownloadExecutor;
                 if (presentationModel == null) {
-                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                     if (currentFragment instanceof BoardFragment) {
                         imagesDownloadTask = ((BoardFragment) currentFragment).imagesDownloadTask;
                         imagesDownloadExecutor = ((BoardFragment) currentFragment).imagesDownloadExecutor;
@@ -3638,7 +3660,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
                     public void run() {
                         BoardFragment fragment = BoardFragment.this;
                         if (fragment.presentationModel == null) {
-                            Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+                            Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
                             if (currentFragment instanceof BoardFragment) fragment = (BoardFragment) currentFragment;
                         }
                         boolean flag = false;
@@ -4018,7 +4040,7 @@ public class BoardFragment extends Fragment implements AdapterView.OnItemClickLi
         }
         
         public void onDestroyFragment(long tabId) {
-            Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.currentFragment;
+            Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
             if (currentFragment instanceof BoardFragment && currentFragment.getArguments().getLong("TabModelId") == tabId) return;
             
             reduce();

@@ -70,8 +70,9 @@ public class HistoryFragment extends Fragment implements AdapterView.OnItemClick
                              null, tab.pageModel.threadNumber, tab.title, tab.webUrl, 0));
                      break;
              }
-             if (MainApplication.getInstance().tabsSwitcher.currentFragment instanceof HistoryFragment) {
-                 ((HistoryFragment) MainApplication.getInstance().tabsSwitcher.currentFragment).init();
+             Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
+             if (currentFragment instanceof HistoryFragment) {
+                 ((HistoryFragment) currentFragment).init();
              }
              if (lastClosed.size() > 30) lastClosed.removeFirst();
          }

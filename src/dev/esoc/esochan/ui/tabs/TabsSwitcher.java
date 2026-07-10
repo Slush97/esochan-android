@@ -18,6 +18,8 @@
 
 package dev.esoc.esochan.ui.tabs;
 
+import java.lang.ref.WeakReference;
+
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.common.Logger;
 import dev.esoc.esochan.common.MainApplication;
@@ -38,7 +40,19 @@ public class TabsSwitcher {
     private static final String TAG = "TabsSwitcher";
     /** текущий ID или виртуальная позиция скрытой вкладки */
     public Long currentId = null;
-    public Fragment currentFragment;
+    private volatile WeakReference<Fragment> currentFragmentRef = new WeakReference<>(null);
+
+    public Fragment getCurrentFragment() {
+        return currentFragmentRef.get();
+    }
+
+    public void clearCurrentFragment() {
+        currentFragmentRef.clear();
+    }
+
+    private void setCurrentFragment(Fragment fragment) {
+        currentFragmentRef = new WeakReference<>(fragment);
+    }
     
     /**
      * Переключиться на вкладку (обычную) tabModel
@@ -59,20 +73,24 @@ public class TabsSwitcher {
         try {
             if (!force) {
                 if (currentId != null && currentId.equals(Long.valueOf(tabModel.id))) {
-                    if (tabModel.forceUpdate && currentFragment != null && currentFragment instanceof BoardFragment) {
-                        String expectPost = tabModel.startItemNumber;
-                        ((BoardFragment) currentFragment).update(expectPost);
-                        tabModel.forceUpdate = false;
-                        MainApplication.getInstance().serializer.serializeTabsState(MainApplication.getInstance().tabsState);
+                    Fragment currentFragment = getCurrentFragment();
+                    if (currentFragment != null) {
+                        if (tabModel.forceUpdate && currentFragment instanceof BoardFragment) {
+                            String expectPost = tabModel.startItemNumber;
+                            ((BoardFragment) currentFragment).update(expectPost);
+                            tabModel.forceUpdate = false;
+                            MainApplication.getInstance().serializer.serializeTabsState(MainApplication.getInstance().tabsState);
+                        }
+                        return;
                     }
-                    return;
                 }
             }
             if (MainApplication.getInstance().getChanModule(tabModel.pageModel.chanName) == null) {
                 Logger.e(TAG, "chan module " + tabModel.pageModel.chanName + " not registered");
                 return;
             }
-            currentFragment = BoardFragment.newInstance(tabModel.id);
+            Fragment currentFragment = BoardFragment.newInstance(tabModel.id);
+            setCurrentFragment(currentFragment);
             currentId = tabModel.id;
             replace(fragmentManager, currentFragment);
         } catch (Exception e) {
@@ -104,7 +122,7 @@ public class TabsSwitcher {
                 Logger.e(TAG, "unsupported virtual tab position: " + virtualPosition);
                 return;
         }
-        currentFragment = newFragment;
+        setCurrentFragment(newFragment);
         currentId = (long) virtualPosition;
         replace(fragmentManager, newFragment);
     }

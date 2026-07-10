@@ -23,8 +23,6 @@ import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -74,6 +72,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
@@ -142,6 +141,11 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     private BroadcastReceiver downloadReportReceiver;
     private ServiceConnection serviceConnection;
     private GalleryRemote remote;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Bundle backendRestoreState;
+    private boolean backendInitialized;
+    private boolean serviceBound;
+    private boolean destroyed;
     
     private GallerySettings settings;
     private List<Triple<AttachmentModel, String, String>> attachments = null;
@@ -163,7 +167,7 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
         @Override
         public void handleMessage(Message msg) {
             GalleryActivity activity = reference.get();
-            if (activity == null) return;
+            if (activity == null || activity.destroyed || activity.progressBar == null) return;
             int progress = msg.arg1;
             if (progress != Window.PROGRESS_END) {
                 if (activity.progressBar.getVisibility() == View.GONE) activity.progressBar.setVisibility(View.VISIBLE);
@@ -256,63 +260,156 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
 
         progressBar = (ProgressBar) findViewById(android.R.id.progress);
         progressBar.setMax(Window.PROGRESS_END);
-        
-        bindService(new Intent(this, GalleryBackend.class), new ServiceConnection() {
-            { serviceConnection = this; }
-            
+
+        backendRestoreState = savedInstanceState == null ? null : new Bundle(savedInstanceState);
+        serviceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
-                GalleryBinder galleryBinder = GalleryBinder.Stub.asInterface(service);
-                try {
-                    GalleryInitData initData = new GalleryInitData(getIntent(), savedInstanceState);
-                    boardModel = initData.boardModel;
-                    chan = boardModel.chan;
-                    remote = new GalleryRemote(galleryBinder, galleryBinder.initContext(initData));
-                    GalleryInitResult initResult = remote.getInitResult();
-                    if (initResult != null) {
-                        attachments = initResult.attachments;
-                        currentPosition = initResult.initPosition;
-                        if (initResult.shouldWaitForPageLoaded) waitForPageLoaded(savedInstanceState);
-                    } else {
-                        attachments = Collections.singletonList(Triple.of(initData.attachment, initData.attachmentHash, (String)null));
-                        currentPosition = 0;
-                    }
-                    
-                    viewPager.setAdapter(new GalleryAdapter());
-                    viewPager.setCurrentItem(currentPosition);
-                    viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-                        @Override
-                        public void onPageSelected(int position) {
-                            currentPosition = position;
-                            updateItem();
-                        }
-                    });
-                } catch (Exception e) {
-                    Logger.e(TAG, e);
-                    finish();
-                }
+                initializeBackend(GalleryBinder.Stub.asInterface(service));
             }
             
             @Override
             public void onServiceDisconnected(ComponentName name) {
                 Logger.e(TAG, "backend service disconnected");
-                remote = null;
-                System.exit(0);
+                handleBackendUnavailable();
             }
-        }, BINDING_FLAGS);
-        
-        GalleryExceptionHandler.init();
+
+            @Override
+            public void onBindingDied(ComponentName name) {
+                Logger.e(TAG, "backend service binding died");
+                handleBackendUnavailable();
+                rebindGalleryBackend();
+            }
+
+            @Override
+            public void onNullBinding(ComponentName name) {
+                Logger.e(TAG, "backend service returned a null binding");
+                handleBackendUnavailable();
+                rebindGalleryBackend();
+            }
+        };
+        bindGalleryBackend();
+    }
+
+    private void bindGalleryBackend() {
+        if (destroyed || serviceBound) return;
+        try {
+            serviceBound = bindService(new Intent(this, GalleryBackend.class), serviceConnection, BINDING_FLAGS);
+            if (!serviceBound) handleBackendUnavailable();
+        } catch (Exception e) {
+            Logger.e(TAG, "cannot bind gallery backend", e);
+            handleBackendUnavailable();
+        }
+    }
+
+    private void rebindGalleryBackend() {
+        if (serviceBound) {
+            try {
+                unbindService(serviceConnection);
+            } catch (Exception e) {
+                Logger.e(TAG, "cannot unbind dead gallery backend", e);
+            }
+            serviceBound = false;
+        }
+        mainHandler.removeCallbacks(rebindBackendRunnable);
+        mainHandler.postDelayed(rebindBackendRunnable, 500);
+    }
+
+    private final Runnable rebindBackendRunnable = new Runnable() {
+        @Override
+        public void run() {
+            bindGalleryBackend();
+        }
+    };
+
+    private void initializeBackend(GalleryBinder galleryBinder) {
+        if (destroyed || galleryBinder == null) return;
+        try {
+            Bundle restoreState = backendRestoreState;
+            if (backendInitialized && attachments != null && !attachments.isEmpty()) {
+                restoreState = new Bundle();
+                restoreState.putString(EXTRA_SAVED_ATTACHMENTHASH,
+                        attachments.get(Math.min(currentPosition, attachments.size() - 1)).getMiddle());
+            }
+            GalleryInitData initData = new GalleryInitData(getIntent(), restoreState);
+            boardModel = initData.boardModel;
+            chan = boardModel.chan;
+            int contextId = galleryBinder.initContext(initData);
+            if (contextId < 0) throw new RemoteException("Gallery backend did not create a context");
+
+            GalleryRemote connectedRemote = new GalleryRemote(galleryBinder, contextId);
+            GalleryInitResult initResult = connectedRemote.getInitResult();
+            remote = connectedRemote;
+
+            if (!backendInitialized) {
+                if (initResult != null) {
+                    attachments = initResult.attachments;
+                    currentPosition = initResult.initPosition;
+                    if (initResult.shouldWaitForPageLoaded) waitForPageLoaded(backendRestoreState);
+                } else {
+                    attachments = Collections.singletonList(
+                            Triple.of(initData.attachment, initData.attachmentHash, (String)null));
+                    currentPosition = 0;
+                }
+                backendInitialized = true;
+                backendRestoreState = null;
+                viewPager.setAdapter(new GalleryAdapter());
+                viewPager.setCurrentItem(currentPosition);
+                viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+                    @Override
+                    public void onPageSelected(int position) {
+                        currentPosition = position;
+                        updateItem();
+                    }
+                });
+            } else {
+                GalleryItemViewTag currentTag = getCurrentTag();
+                if (currentTag != null && currentTag.file == null) updateItem();
+            }
+        } catch (RemoteException e) {
+            Logger.e(TAG, "cannot initialize gallery backend", e);
+            handleBackendUnavailable();
+            rebindGalleryBackend();
+        } catch (Exception e) {
+            Logger.e(TAG, "invalid gallery initialization data", e);
+            Toast.makeText(this, R.string.error_unknown, Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
+    private void handleBackendUnavailable() {
+        remote = null;
+        if (destroyed) return;
+        hideProgress();
+        Toast.makeText(this, R.string.error_connection, Toast.LENGTH_SHORT).show();
+        if (instantiatedViews == null) return;
+        for (int i = 0; i < instantiatedViews.size(); ++i) {
+            View view = instantiatedViews.valueAt(i);
+            if (view == null) continue;
+            Object value = view.getTag();
+            if (value instanceof GalleryItemViewTag) {
+                GalleryItemViewTag tag = (GalleryItemViewTag) value;
+                if (tag.file == null && tag.downloadingTask != null) {
+                    tag.downloadingTask.cancel();
+                    showErrorView(tag, getString(R.string.error_connection));
+                }
+            }
+        }
     }
     
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString(EXTRA_SAVED_ATTACHMENTHASH, attachments.get(currentPosition).getMiddle());
+        if (attachments != null && !attachments.isEmpty()) {
+            outState.putString(EXTRA_SAVED_ATTACHMENTHASH,
+                    attachments.get(Math.min(currentPosition, attachments.size() - 1)).getMiddle());
+        }
     }
     
     private void waitForPageLoaded(Bundle savedInstanceState) {
         final String savedHash = savedInstanceState != null ? savedInstanceState.getString(EXTRA_SAVED_ATTACHMENTHASH) : null;
-        if (savedHash != null) ContextCompat.registerReceiver(this, new BroadcastReceiver() {
+        if (savedHash != null) {
+            broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent.getAction() != null && intent.getAction().equals(BoardFragment.BROADCAST_PAGE_LOADED)) {
@@ -321,13 +418,17 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                     
                     Intent activityIntent = getIntent();
                     String pagehash = activityIntent.getStringExtra(EXTRA_PAGEHASH);
-                    if (pagehash != null && remote.isPageLoaded(pagehash)) {
+                    GalleryRemote currentRemote = remote;
+                    if (pagehash != null && currentRemote != null && currentRemote.isPageLoaded(pagehash)) {
                         startActivity(activityIntent.putExtra(EXTRA_SAVED_ATTACHMENTHASH, savedHash));
                         finish();
                     }
                 }
             }
-        }, new IntentFilter(BoardFragment.BROADCAST_PAGE_LOADED), ContextCompat.RECEIVER_NOT_EXPORTED);
+            };
+            ContextCompat.registerReceiver(this, broadcastReceiver,
+                    new IntentFilter(BoardFragment.BROADCAST_PAGE_LOADED), ContextCompat.RECEIVER_NOT_EXPORTED);
+        }
     }
     
     @Override
@@ -344,22 +445,31 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
         };
         ContextCompat.registerReceiver(this, downloadReportReceiver,
                 new IntentFilter(DownloadingService.BROADCAST_UPDATED), ContextCompat.RECEIVER_NOT_EXPORTED);
+        resumePlayback();
     }
 
     @Override
     protected void onStop() {
-        super.onStop();
-        BroadcastReceiver receiver = broadcastReceiver;
-        if (receiver != null) unregisterReceiver(receiver);
         if (downloadReportReceiver != null) {
             unregisterReceiver(downloadReportReceiver);
             downloadReportReceiver = null;
         }
+        pausePlayback();
+        super.onStop();
     }
     
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        destroyed = true;
+        mainHandler.removeCallbacksAndMessages(null);
+        if (broadcastReceiver != null) {
+            try {
+                unregisterReceiver(broadcastReceiver);
+            } catch (IllegalArgumentException e) {
+                Logger.e(TAG, "page receiver was already unregistered", e);
+            }
+            broadcastReceiver = null;
+        }
         if (instantiatedViews != null) {
             for (int i=0; i<instantiatedViews.size(); ++i) {
                 View v = instantiatedViews.valueAt(i);
@@ -370,9 +480,24 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                     }
                 }
             }
+            instantiatedViews.clear();
         }
-        tnDownloadingExecutor.shutdown();
-        if (serviceConnection != null) unbindService(serviceConnection);
+        if (tnDownloadingExecutor != null) tnDownloadingExecutor.shutdownNow();
+        if (serviceBound && serviceConnection != null) {
+            try {
+                unbindService(serviceConnection);
+            } catch (Exception e) {
+                Logger.e(TAG, "cannot unbind gallery backend", e);
+            }
+            serviceBound = false;
+        }
+        remote = null;
+        binding = null;
+        bindingFullscreen = null;
+        progressBar = null;
+        viewPager = null;
+        navigationInfo = null;
+        super.onDestroy();
     }
     
     @Override
@@ -601,7 +726,9 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     private void shareLink() {
         GalleryItemViewTag tag = getCurrentTag();
         if (tag == null) return;
-        String absoluteUrl = remote.getAbsoluteUrl(tag.attachmentModel.path);
+        GalleryRemote currentRemote = getConnectedBackend();
+        if (currentRemote == null) return;
+        String absoluteUrl = currentRemote.getAbsoluteUrl(tag.attachmentModel.path);
         if (absoluteUrl == null) return;
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
@@ -613,7 +740,9 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     private void reverseSearch() {
         GalleryItemViewTag tag = getCurrentTag();
         if (tag == null) return;
-        String absoluteUrl = remote.getAbsoluteUrl(tag.attachmentModel.path);
+        GalleryRemote currentRemote = getConnectedBackend();
+        if (currentRemote == null) return;
+        String absoluteUrl = currentRemote.getAbsoluteUrl(tag.attachmentModel.path);
         if (absoluteUrl == null) return;
         ReverseImageSearch.openDialog(this, absoluteUrl);
     }
@@ -621,9 +750,19 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     private void openBrowser() {
         GalleryItemViewTag tag = getCurrentTag();
         if (tag == null) return;
-        String absoluteUrl = remote.getAbsoluteUrl(tag.attachmentModel.path);
+        GalleryRemote currentRemote = getConnectedBackend();
+        if (currentRemote == null) return;
+        String absoluteUrl = currentRemote.getAbsoluteUrl(tag.attachmentModel.path);
         if (absoluteUrl == null) return;
         UrlHandler.launchExternalBrowser(this, absoluteUrl);
+    }
+
+    private GalleryRemote getConnectedBackend() {
+        GalleryRemote currentRemote = remote;
+        if (currentRemote == null && !destroyed) {
+            Toast.makeText(this, R.string.error_connection, Toast.LENGTH_SHORT).show();
+        }
+        return currentRemote;
     }
     
     private class GalleryAdapter extends PagerAdapter {
@@ -665,7 +804,8 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
             instantiatedViews.put(position, v);
             
             String hash = tag.attachmentHash;
-            Bitmap bmp = remote.getBitmapFromMemory(hash);
+            GalleryRemote currentRemote = remote;
+            Bitmap bmp = currentRemote == null ? null : currentRemote.getBitmapFromMemory(hash);
             if (bmp != null) {
                 tag.thumbnailView.setImageBitmap(bmp);
             } else {
@@ -703,7 +843,9 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
             
             @Override
             public void run() {
-                Bitmap bmp = remote.getBitmap(hash, url);
+                GalleryRemote currentRemote = remote;
+                if (currentRemote == null) return;
+                Bitmap bmp = currentRemote.getBitmap(hash, url);
                 if (bmp != null) {
                     View v = instantiatedViews.get(position);
                     if (v != null) {
@@ -730,8 +872,12 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     }
     
     private void updateItem() {
+        if (attachments == null || attachments.isEmpty()) return;
         AttachmentModel attachment = attachments.get(currentPosition).getLeft();
-        if (settings.scrollThreadFromGallery() && !firstScroll) remote.tryScrollParent(attachments.get(currentPosition).getRight());
+        GalleryRemote currentRemote = remote;
+        if (settings.scrollThreadFromGallery() && !firstScroll && currentRemote != null) {
+            currentRemote.tryScrollParent(attachments.get(currentPosition).getRight());
+        }
         firstScroll = false;
         String navText = attachment.size == -1 ? (currentPosition + 1) + "/" + attachments.size() :
                 (currentPosition + 1) + "/" + attachments.size() + " (" + Attachments.getAttachmentSizeString(attachment, getResources()) + ")";
@@ -778,7 +924,12 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                 return;
             }
             final String[] exception = new String[1];
-            File file = remote.getAttachment(new GalleryAttachmentInfo(tag.attachmentModel, tag.attachmentHash), new AbstractGetterCallback(this) {
+            GalleryRemote currentRemote = remote;
+            if (currentRemote == null) {
+                showError(tag, getString(R.string.error_connection));
+                return;
+            }
+            File file = currentRemote.getAttachment(new GalleryAttachmentInfo(tag.attachmentModel, tag.attachmentHash), new AbstractGetterCallback(this) {
                 @Override
                 public void showLoading() {
                     runOnUiThread(new Runnable() {
@@ -841,26 +992,26 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     }
     
     private void showError(final GalleryItemViewTag tag, final String message) {
-        if (tag.downloadingTask.isCancelled()) return;
+        final CancellableTask task = tag.downloadingTask;
+        if (task == null || task.isCancelled()) return;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (tag.downloadingTask.isCancelled()) return;
-                hideProgress();
-                tag.layout.setVisibility(View.GONE);
-                recycleTag(tag, true);
-                tag.thumbnailView.setVisibility(View.GONE);
-                tag.loadingView.setVisibility(View.GONE);
-                tag.errorView.setVisibility(View.VISIBLE);
-                tag.errorText.setText(fixErrorMessage(message));
-            }
-            private String fixErrorMessage(String message) {
-                if (message == null || message.length() == 0) {
-                    return getString(R.string.error_unknown);
-                }
-                return message;
+                if (task.isCancelled() || tag.downloadingTask != task) return;
+                showErrorView(tag, message);
             }
         });
+    }
+
+    private void showErrorView(GalleryItemViewTag tag, String message) {
+        hideProgress();
+        tag.layout.setVisibility(View.GONE);
+        recycleTag(tag, true);
+        tag.thumbnailView.setVisibility(View.GONE);
+        tag.loadingView.setVisibility(View.GONE);
+        tag.errorView.setVisibility(View.VISIBLE);
+        tag.errorText.setText(message == null || message.length() == 0
+                ? getString(R.string.error_unknown) : message);
     }
     
     private void recycleTag(GalleryItemViewTag tag, boolean cancelTask) {
@@ -869,6 +1020,13 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                 View v = tag.layout.getChildAt(i);
                 if (v instanceof FixedSubsamplingScaleImageView) {
                     ((FixedSubsamplingScaleImageView) v).recycle();
+                } else if (v instanceof WebView) {
+                    WebView webView = (WebView) v;
+                    webView.stopLoading();
+                    webView.loadUrl("about:blank");
+                    webView.clearHistory();
+                    webView.removeAllViews();
+                    webView.destroy();
                 } else if (v != null) {
                     Object gifTag = v.getTag();
                     if (gifTag != null && gifTag instanceof GifDrawable) {
@@ -879,10 +1037,14 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
             tag.layout.removeAllViews();
         }
         
-        if (cancelTask && tag.downloadingTask != null) tag.downloadingTask.cancel();
-        if (tag.timer != null) tag.timer.cancel();
+        if (cancelTask && tag.downloadingTask != null) {
+            tag.downloadingTask.cancel();
+        }
+        stopPlaybackProgressUpdates(tag);
         if (tag.exoPlayer != null) {
             try {
+                tag.exoPlayer.stop();
+                tag.exoPlayer.clearVideoSurface();
                 tag.exoPlayer.release();
             } catch (Exception e) {
                 Logger.e(TAG, e);
@@ -890,8 +1052,61 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                 tag.exoPlayer = null;
             }
         }
-        
-        System.gc();
+        tag.playbackDurationView = null;
+        tag.resumePlaybackOnStart = false;
+    }
+
+    private void pausePlayback() {
+        if (instantiatedViews == null) return;
+        for (int i = 0; i < instantiatedViews.size(); ++i) {
+            View view = instantiatedViews.valueAt(i);
+            if (view == null || !(view.getTag() instanceof GalleryItemViewTag)) continue;
+            GalleryItemViewTag tag = (GalleryItemViewTag) view.getTag();
+            if (tag.exoPlayer != null) {
+                tag.resumePlaybackOnStart = tag.exoPlayer.getPlayWhenReady();
+                tag.exoPlayer.pause();
+                stopPlaybackProgressUpdates(tag);
+            }
+        }
+    }
+
+    private void resumePlayback() {
+        if (instantiatedViews == null) return;
+        for (int i = 0; i < instantiatedViews.size(); ++i) {
+            View view = instantiatedViews.valueAt(i);
+            if (view == null || !(view.getTag() instanceof GalleryItemViewTag)) continue;
+            GalleryItemViewTag tag = (GalleryItemViewTag) view.getTag();
+            if (tag.exoPlayer != null && tag.resumePlaybackOnStart) {
+                tag.resumePlaybackOnStart = false;
+                tag.exoPlayer.play();
+                startPlaybackProgressUpdates(tag);
+            }
+        }
+    }
+
+    private void startPlaybackProgressUpdates(final GalleryItemViewTag tag) {
+        stopPlaybackProgressUpdates(tag);
+        if (tag.exoPlayer == null || tag.playbackDurationView == null) return;
+        tag.playbackProgressUpdater = new Runnable() {
+            @Override
+            public void run() {
+                ExoPlayer player = tag.exoPlayer;
+                TextView durationView = tag.playbackDurationView;
+                if (destroyed || player == null || durationView == null) return;
+                String text = formatMediaPlayerTime(player.getCurrentPosition()) + " / "
+                        + formatMediaPlayerTime(player.getDuration());
+                durationView.setText(tag.playbackTimeSpanned ? getSpannedText(text) : text);
+                mainHandler.postDelayed(this, 1000);
+            }
+        };
+        mainHandler.post(tag.playbackProgressUpdater);
+    }
+
+    private void stopPlaybackProgressUpdates(GalleryItemViewTag tag) {
+        if (tag.playbackProgressUpdater != null) {
+            mainHandler.removeCallbacks(tag.playbackProgressUpdater);
+            tag.playbackProgressUpdater = null;
+        }
     }
     
     private void setStaticImage(final GalleryItemViewTag tag, final File file) {
@@ -990,6 +1205,8 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
 
                             final ExoPlayer exoPlayer = new ExoPlayer.Builder(GalleryActivity.this).build();
                             tag.exoPlayer = exoPlayer;
+                            tag.playbackDurationView = durationView;
+                            tag.playbackTimeSpanned = false;
                             exoPlayer.setVideoTextureView(textureView);
                             exoPlayer.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)));
                             exoPlayer.setRepeatMode(Player.REPEAT_MODE_ONE);
@@ -1111,32 +1328,15 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                                 public void onPlaybackStateChanged(int state) {
                                     if (state == Player.STATE_READY) {
                                         long duration = exoPlayer.getDuration();
-                                        durationView.setText("00:00 / " + formatMediaPlayerTime((int)duration));
+                                        durationView.setText("00:00 / " + formatMediaPlayerTime(duration));
 
-                                        tag.timer = new Timer();
-                                        tag.timer.schedule(new TimerTask() {
-                                            @Override
-                                            public void run() {
-                                                runOnUiThread(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        try {
-                                                            durationView.setText(formatMediaPlayerTime((int)exoPlayer.getCurrentPosition()) + " / " +
-                                                                    formatMediaPlayerTime((int)exoPlayer.getDuration()));
-                                                        } catch (Exception e) {
-                                                            Logger.e(TAG, e);
-                                                            tag.timer.cancel();
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }, 1000, 1000);
+                                        startPlaybackProgressUpdates(tag);
                                     }
                                 }
                                 @Override
                                 public void onPlayerError(PlaybackException error) {
                                     Logger.e(TAG, "(Video) ExoPlayer error: " + error.getMessage());
-                                    if (tag.timer != null) tag.timer.cancel();
+                                    stopPlaybackProgressUpdates(tag);
                                     showError(tag, getString(R.string.gallery_error_play));
                                 }
                             });
@@ -1169,6 +1369,8 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
 
                             final ExoPlayer exoPlayer = new ExoPlayer.Builder(GalleryActivity.this).build();
                             tag.exoPlayer = exoPlayer;
+                            tag.playbackDurationView = durationView;
+                            tag.playbackTimeSpanned = true;
                             exoPlayer.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)));
                             exoPlayer.setRepeatMode(Player.REPEAT_MODE_ONE);
 
@@ -1177,26 +1379,9 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                                 public void onPlaybackStateChanged(int state) {
                                     if (state == Player.STATE_READY) {
                                         long duration = exoPlayer.getDuration();
-                                        durationView.setText(getSpannedText("00:00 / " + formatMediaPlayerTime((int)duration)));
+                                        durationView.setText(getSpannedText("00:00 / " + formatMediaPlayerTime(duration)));
 
-                                        tag.timer = new Timer();
-                                        tag.timer.schedule(new TimerTask() {
-                                            @Override
-                                            public void run() {
-                                                runOnUiThread(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        try {
-                                                            durationView.setText(getSpannedText(formatMediaPlayerTime((int)exoPlayer.getCurrentPosition()) + " / " +
-                                                                    formatMediaPlayerTime((int)exoPlayer.getDuration())));
-                                                        } catch (Exception e) {
-                                                            Logger.e(TAG, e);
-                                                            tag.timer.cancel();
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }, 1000, 1000);
+                                        startPlaybackProgressUpdates(tag);
 
                                         exoPlayer.play();
                                     }
@@ -1204,7 +1389,7 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
                                 @Override
                                 public void onPlayerError(PlaybackException error) {
                                     Logger.e(TAG, "(Audio) ExoPlayer error: " + error.getMessage());
-                                    if (tag.timer != null) tag.timer.cancel();
+                                    stopPlaybackProgressUpdates(tag);
                                     showError(tag, getString(R.string.gallery_error_play));
                                 }
                             });
@@ -1217,9 +1402,10 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
         });
     }
     
-    private String formatMediaPlayerTime(int milliseconds) {
-        int seconds = milliseconds / 1000 % 60;
-        int minutes = milliseconds / 60000;
+    private String formatMediaPlayerTime(long milliseconds) {
+        if (milliseconds < 0) return "--:--";
+        long seconds = milliseconds / 1000 % 60;
+        long minutes = milliseconds / 60000;
         return String.format(Locale.US, "%02d:%02d", minutes, seconds);
     }
     
@@ -1434,8 +1620,11 @@ public class GalleryActivity extends AppCompatActivity implements View.OnClickLi
     
     private class GalleryItemViewTag {
         public CancellableTask downloadingTask;
-        public Timer timer;
         public ExoPlayer exoPlayer;
+        public Runnable playbackProgressUpdater;
+        public TextView playbackDurationView;
+        public boolean playbackTimeSpanned;
+        public boolean resumePlaybackOnStart;
         public AttachmentModel attachmentModel;
         public String attachmentHash;
         public File file;

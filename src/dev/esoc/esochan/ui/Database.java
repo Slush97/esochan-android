@@ -40,7 +40,8 @@ import android.provider.BaseColumns;
 public class Database {
     private static final String TAG = "Database";
     
-    private static final int DB_VERSION = 1000;
+    private static final int DB_VERSION_PRESERVE_USER_DATA = 1001;
+    private static final int DB_VERSION = DB_VERSION_PRESERVE_USER_DATA;
     private static final String DB_NAME = "database.db";
     
     private static final String TABLE_HIDDEN = "hiddenitems";
@@ -384,6 +385,10 @@ public class Database {
 
         @Override
         public void onCreate(SQLiteDatabase db) {
+            createCurrentTables(db);
+        }
+
+        private static void createCurrentTables(SQLiteDatabase db) {
             db.execSQL(createTable(TABLE_HIDDEN, new String[] { COL_CHAN, COL_BOARD, COL_THREAD, COL_POST }));
             db.execSQL(createTable(TABLE_HISTORY,
                     new String[] { COL_CHAN, COL_BOARD, COL_BOARDPAGE, COL_THREAD, COL_TITLE, COL_URL, COL_DATE },
@@ -394,18 +399,18 @@ public class Database {
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            if (oldVersion < newVersion) {
-                db.execSQL(dropTable(TABLE_HIDDEN));
-                db.execSQL(dropTable(TABLE_HISTORY));
-                db.execSQL(dropTable(TABLE_FAVORITES));
-                db.execSQL(dropTable(TABLE_SAVED));
-                onCreate(db);
+            if (oldVersion < DB_VERSION_PRESERVE_USER_DATA) {
+                // Version 1000 already used this layout. Reassert it idempotently so
+                // partially-created databases recover without replacing user data.
+                createCurrentTables(db);
             }
         }
         
         @Override
         public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            onUpgrade(db, oldVersion, newVersion);
+            // The current tables contain user-owned state. Older app versions ignore
+            // unknown tables/columns, so retaining them is safer than rebuilding.
+            createCurrentTables(db);
         }
         
         private static String createTable(String tableName, String[] columns) {
@@ -413,7 +418,7 @@ public class Database {
         }
         
         private static String createTable(String tableName, String[] columns, String[] types) {
-            StringBuilder sql = new StringBuilder(110).append("create table ").append(tableName).append(" (").
+            StringBuilder sql = new StringBuilder(110).append("create table if not exists ").append(tableName).append(" (").
                     append(_ID).append(" integer primary key autoincrement,");
             for (int i=0; i<columns.length; ++i) {
                 sql.append(columns[i]).append(' ').append(types == null ? "text" : types[i]).append(',');

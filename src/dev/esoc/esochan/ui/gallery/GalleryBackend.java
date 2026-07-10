@@ -36,6 +36,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.IBinder;
 import android.os.RemoteException;
+import androidx.fragment.app.Fragment;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.ChanModule;
 import dev.esoc.esochan.api.interfaces.CancellableTask;
@@ -89,9 +90,13 @@ public class GalleryBackend extends Service {
     
     @Override
     public void onDestroy() {
-        super.onDestroy();
         if (tnDownloadingTask != null) tnDownloadingTask.cancel();
-        for (GalleryContext context : contexts) {
+        List<GalleryContext> activeContexts;
+        synchronized (contexts) {
+            activeContexts = new ArrayList<>(contexts);
+            contexts.clear();
+        }
+        for (GalleryContext context : activeContexts) {
             if (context.localFile != null) {
                 try {
                     context.localFile.close();
@@ -100,6 +105,7 @@ public class GalleryBackend extends Service {
                 }
             }
         }
+        super.onDestroy();
     }
     
     @Override
@@ -111,6 +117,13 @@ public class GalleryBackend extends Service {
         private final WeakReference<GalleryBackend> service;
         private MyBinder(GalleryBackend service) {
             this.service = new WeakReference<>(service);
+        }
+
+        private GalleryContext getContext(GalleryBackend service, int contextId) {
+            synchronized (service.contexts) {
+                if (contextId < 0 || contextId >= service.contexts.size()) return null;
+                return service.contexts.get(contextId);
+            }
         }
         
         @Override
@@ -136,33 +149,34 @@ public class GalleryBackend extends Service {
         public GalleryInitResult getInitResult(int contextId) {
             GalleryBackend service = this.service.get();
             if (service == null) return null;
-            
-            return service.contexts.get(contextId).getInitResult();
+            GalleryContext context = getContext(service, contextId);
+            return context == null ? null : context.getInitResult();
         }
         
         @Override
         public Bitmap getBitmapFromMemory(int contextId, String hash) {
             GalleryBackend service = this.service.get();
             if (service == null) return null;
-            
-            return service.contexts.get(contextId).getBitmapFromMemory(hash);
+            GalleryContext context = getContext(service, contextId);
+            return context == null ? null : context.getBitmapFromMemory(hash);
         }
         
         @Override
         public Bitmap getBitmap(int contextId, String hash, String url) {
             GalleryBackend service = this.service.get();
             if (service == null) return null;
-            
-            return service.contexts.get(contextId).getBitmap(hash, url);
+            GalleryContext context = getContext(service, contextId);
+            return context == null ? null : context.getBitmap(hash, url);
         }
         
         @Override
         public String getAttachment(int contextId, GalleryAttachmentInfo attachment, GalleryGetterCallback callback) {
             GalleryBackend service = this.service.get();
             if (service == null) return null;
-            
+            GalleryContext context = getContext(service, contextId);
+            if (context == null) return null;
             try {
-                File file = service.contexts.get(contextId).getFile(attachment.hash, attachment.attachment, callback);
+                File file = context.getFile(attachment.hash, attachment.attachment, callback);
                 if (file == null) return null;
                 return file.getPath();
             } catch (Exception e) {
@@ -175,16 +189,16 @@ public class GalleryBackend extends Service {
         public String getAbsoluteUrl(int contextId, String url) {
             GalleryBackend service = this.service.get();
             if (service == null) return null;
-            
-            return service.contexts.get(contextId).getAbsoluteUrl(url);
+            GalleryContext context = getContext(service, contextId);
+            return context == null ? null : context.getAbsoluteUrl(url);
         }
         
         @Override
         public void tryScrollParent(int contextId, String postNumber) {
             GalleryBackend service = this.service.get();
             if (service == null) return;
-            
-            service.contexts.get(contextId).tryScrollParent(postNumber);
+            GalleryContext context = getContext(service, contextId);
+            if (context != null) context.tryScrollParent(postNumber);
         }
     }
     
@@ -361,6 +375,9 @@ public class GalleryBackend extends Service {
                 is = DownloadStorage.openDownloadedFile(GalleryBackend.this, chanName, subdirectory, fileName);
                 os = new FileOutputStream(cacheFile);
                 IOUtils.copyStream(is, os);
+                IOUtils.closeQuietly(os);
+                os = null;
+                fileCache.put(cacheFile);
                 return cacheFile;
             } catch (Exception e) {
                 Logger.e(TAG, "Failed to copy downloaded file to cache", e);
@@ -380,8 +397,9 @@ public class GalleryBackend extends Service {
             try {
                 TabsState tabsState = MainApplication.getInstance().tabsState;
                 final TabsSwitcher tabsSwitcher = MainApplication.getInstance().tabsSwitcher;
-                if (tabsSwitcher.currentFragment instanceof BoardFragment) {
-                    final BoardFragment fragment = (BoardFragment) tabsSwitcher.currentFragment;
+                Fragment currentFragment = tabsSwitcher.getCurrentFragment();
+                if (currentFragment instanceof BoardFragment) {
+                    final BoardFragment fragment = (BoardFragment) currentFragment;
                     TabModel tab = tabsState.findTabById(tabsSwitcher.currentId);
                     if (tab != null && tab.pageModel != null && tab.pageModel.type == UrlPageModel.TYPE_THREADPAGE) {
                         Async.runOnUiThread(new Runnable() {

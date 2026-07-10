@@ -23,6 +23,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import dev.esoc.esochan.common.Tuples.Pair;
 
@@ -61,6 +68,8 @@ public class Serializer {
     private final AtomicFile tabsStateFile;
     private final Kryo kryo;
     private final Object kryoLock = new Object();
+    private final ExecutorService persistenceExecutor =
+            Executors.newSingleThreadExecutor(Async.LOW_PRIORITY_FACTORY);
     
     /**
      * Конструктор
@@ -108,13 +117,13 @@ public class Serializer {
         this.kryo.register(java.io.File[].class, 126);
     }
     
-    private void serialize(String filename, Object obj) {
+    private byte[] snapshot(Object obj) {
         synchronized (kryoLock) {
-            File file = fileCache.create(filename);
             Output output = null;
             try {
-                output = new Output(new FileOutputStream(file));
+                output = new Output(4096, -1);
                 kryo.writeObject(output, obj);
+                return output.toBytes();
             } catch (Exception e) {
                 Logger.e(TAG, e);
             } catch (OutOfMemoryError oom) {
@@ -123,17 +132,55 @@ public class Serializer {
             } finally {
                 IOUtils.closeQuietly(output);
             }
+        }
+        return null;
+    }
+
+    private void writeCacheSnapshot(String filename, byte[] snapshot) {
+        File file = fileCache.create(filename);
+        AtomicFile atomicFile = new AtomicFile(file);
+        FileOutputStream fileStream = null;
+        try {
+            fileStream = atomicFile.startWrite();
+            fileStream.write(snapshot);
+            atomicFile.finishWrite(fileStream);
+            fileStream = null;
+        } catch (Exception e) {
+            Logger.e(TAG, e);
+            atomicFile.failWrite(fileStream);
+            fileCache.abort(file);
+            return;
+        }
+        try {
             fileCache.put(file);
+        } catch (Exception e) {
+            Logger.e(TAG, e);
+            fileCache.abort(file);
         }
     }
-    
-    private void serializeAsync(final String filename, final Object obj) {
-        Async.runAsync(new Runnable() {
+
+    private void serializeAsync(final String filename, Object obj) {
+        final byte[] objectSnapshot = snapshot(obj);
+        if (objectSnapshot == null) return;
+        persistenceExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                serialize(filename, obj);
+                writeCacheSnapshot(filename, objectSnapshot);
             }
         });
+    }
+
+    private <T> T executeOrdered(Callable<T> task, T fallback) {
+        Future<T> future = persistenceExecutor.submit(task);
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Logger.e(TAG, e);
+        } catch (ExecutionException e) {
+            Logger.e(TAG, e.getCause() != null ? e.getCause() : e);
+        }
+        return fallback;
     }
     
     private <T> T deserialize(File file, Class<T> type) {
@@ -160,7 +207,7 @@ public class Serializer {
     }
     
     public <T> T deserialize(String fileName, Class<T> type) {
-        return deserialize(fileCache.get(fileName), type);
+        return executeOrdered(() -> deserialize(fileCache.get(fileName), type), null);
     }
     
     public void serializePage(String hash, SerializablePage page) {
@@ -203,51 +250,55 @@ public class Serializer {
     }
     
     public void removeDraft(String hash) {
-        File file = fileCache.get(FileCache.PREFIX_DRAFTS + hash);
-        if (file != null) {
-            fileCache.delete(file);
-        }
+        final String filename = FileCache.PREFIX_DRAFTS + hash;
+        persistenceExecutor.execute(() -> {
+            File file = fileCache.get(filename);
+            if (file != null) fileCache.delete(file);
+        });
     }
     
-    public void serializeTabsState(final TabsState state) {
-        Async.runAsync(new Runnable() {
+    public void serializeTabsState(TabsState state) {
+        TabsState stableState = new TabsState();
+        stableState.tabsArray = new ArrayList<>(Arrays.asList(state.snapshotTabs()));
+        stableState.tabsIdStack = state.tabsIdStack;
+        stableState.position = state.position;
+        final byte[] stateSnapshot = snapshot(stableState);
+        if (stateSnapshot == null) return;
+        persistenceExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                synchronized (kryoLock) {
-                    FileOutputStream fileStream = null;
-                    try {
-                        fileStream = tabsStateFile.startWrite();
-                        Output output = new Output(fileStream);
-                        kryo.writeObject(output, state);
-                        output.flush();
-                        tabsStateFile.finishWrite(fileStream);
-                    } catch (Exception|OutOfMemoryError e) {
-                        if (e instanceof OutOfMemoryError) MainApplication.freeMemory();
-                        Logger.e(TAG, e);
-                        tabsStateFile.failWrite(fileStream);
-                    }
+                FileOutputStream fileStream = null;
+                try {
+                    fileStream = tabsStateFile.startWrite();
+                    fileStream.write(stateSnapshot);
+                    tabsStateFile.finishWrite(fileStream);
+                } catch (Exception e) {
+                    Logger.e(TAG, e);
+                    tabsStateFile.failWrite(fileStream);
                 }
             }
         });
     }
     
     public TabsState deserializeTabsState() {
-        synchronized (kryoLock) {
-            Input input = null;
-            try {
-                input = new Input(tabsStateFile.openRead());
-                TabsState obj = kryo.readObject(input, TabsState.class);
-                if (obj != null && obj.tabsArray != null && obj.tabsIdStack != null) return obj;
-            } catch (Exception e) {
-                Logger.e(TAG, e);
-            } catch (OutOfMemoryError e) {
-                MainApplication.freeMemory();
-                Logger.e(TAG, e);
-            } finally {
-                IOUtils.closeQuietly(input);
+        return executeOrdered(() -> {
+            synchronized (kryoLock) {
+                Input input = null;
+                try {
+                    input = new Input(tabsStateFile.openRead());
+                    TabsState obj = kryo.readObject(input, TabsState.class);
+                    if (obj != null && obj.tabsArray != null && obj.tabsIdStack != null) return obj;
+                } catch (Exception e) {
+                    Logger.e(TAG, e);
+                } catch (OutOfMemoryError e) {
+                    MainApplication.freeMemory();
+                    Logger.e(TAG, e);
+                } finally {
+                    IOUtils.closeQuietly(input);
+                }
             }
-        }
-        return TabsState.obtainDefault();
+            return TabsState.obtainDefault();
+        }, TabsState.obtainDefault());
     }
     
     public void savePage(OutputStream out, String title, UrlPageModel pageModel, SerializablePage page) {

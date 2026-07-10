@@ -36,10 +36,12 @@ import dev.esoc.esochan.ui.MainActivity;
 import java.lang.ref.WeakReference;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -79,7 +81,10 @@ public class PostingService extends Service {
     private PostingServiceBinder binder;
     private NotificationManager notificationManager;
     
-    private PostingTask currentTask;
+    private final Object postingLock = new Object();
+    private volatile PostingTask currentTask;
+    private volatile boolean isForeground;
+    private int lastStartId;
     
     public static boolean isNowPosting() {
         return nowPosting;
@@ -95,6 +100,11 @@ public class PostingService extends Service {
     
     @Override
     public void onDestroy() {
+        PostingTask task = clearCurrentTask();
+        if (task != null) {
+            task.cancel();
+            stopPostingForeground(false);
+        }
         super.onDestroy();
         Logger.d(TAG, "destroyed posting service");
     }
@@ -107,77 +117,177 @@ public class PostingService extends Service {
     @Override
     @SuppressLint("InlinedApi")
     public int onStartCommand(Intent intent, int flags, int startId) {
-        onStart(intent, startId);
-        return Service.START_REDELIVER_INTENT;
+        PostingTask task = null;
+        boolean stopImmediately = false;
+        synchronized (postingLock) {
+            lastStartId = startId;
+            if (intent == null) {
+                Logger.e(TAG, "posting intent == null");
+                stopImmediately = currentTask == null;
+            } else {
+                Object sendPostExtra = null;
+                Object boardExtra = null;
+                try {
+                    sendPostExtra = intent.getSerializableExtra(EXTRA_SEND_POST_MODEL);
+                    boardExtra = intent.getSerializableExtra(EXTRA_BOARD_MODEL);
+                } catch (RuntimeException e) {
+                    Logger.e(TAG, "failed to read posting payload", e);
+                }
+                if (!(sendPostExtra instanceof SendPostModel) || !(boardExtra instanceof BoardModel)) {
+                    Logger.e(TAG, "invalid posting payload");
+                    stopImmediately = currentTask == null;
+                } else if (currentTask != null) {
+                    Logger.e(TAG, "ignoring posting start while another post is in progress");
+                } else {
+                    try {
+                        task = new PostingTask(
+                                intent.getStringExtra(EXTRA_PAGE_HASH),
+                                (SendPostModel) sendPostExtra,
+                                (BoardModel) boardExtra);
+                        currentTask = task;
+                        nowPosting = true;
+                    } catch (RuntimeException e) {
+                        Logger.e(TAG, "failed to prepare posting task", e);
+                        stopImmediately = true;
+                    }
+                }
+            }
+        }
+        if (stopImmediately) {
+            stopSelf(startId);
+        } else if (task != null) {
+            Logger.d(TAG, "start; nowPosting = true");
+            try {
+                startPostingForeground(task.getProgressNotification());
+                Async.runAsync(task);
+            } catch (RuntimeException e) {
+                Logger.e(TAG, "failed to start posting task", e);
+                finishTask(task);
+            }
+        }
+        return Service.START_NOT_STICKY;
+    }
+
+    private void finishTask(PostingTask task) {
+        int startIdToStop = -1;
+        synchronized (postingLock) {
+            if (currentTask == task) {
+                currentTask = null;
+                nowPosting = false;
+                startIdToStop = lastStartId;
+            }
+        }
+        if (startIdToStop != -1) {
+            stopPostingForeground(task.shouldKeepNotification());
+            Logger.d(TAG, "stop; nowPosting = false");
+            stopSelf(startIdToStop);
+        }
+    }
+
+    private PostingTask clearCurrentTask() {
+        synchronized (postingLock) {
+            PostingTask task = currentTask;
+            currentTask = null;
+            nowPosting = false;
+            return task;
+        }
+    }
+
+    private void startPostingForeground(Notification notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                    POSTING_NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(POSTING_NOTIFICATION_ID, notification);
+        }
+        isForeground = true;
+    }
+
+    private void stopPostingForeground(boolean keepNotification) {
+        if (isForeground) {
+            stopForeground(keepNotification ? STOP_FOREGROUND_DETACH : STOP_FOREGROUND_REMOVE);
+            isForeground = false;
+        } else if (!keepNotification) {
+            notificationManager.cancel(POSTING_NOTIFICATION_ID);
+        }
     }
 
     @Override
-    public void onStart(Intent intent, int startId) {
-        if (intent == null) {
-            nowPosting = false;
-            stopSelf(startId);
-            return;
-        }
-        currentTask = new PostingTask(
-                startId,
-                intent.getStringExtra(EXTRA_PAGE_HASH),
-                (SendPostModel) intent.getSerializableExtra(EXTRA_SEND_POST_MODEL),
-                (BoardModel) intent.getSerializableExtra(EXTRA_BOARD_MODEL));
-        Async.runAsync(currentTask);
+    public void onTimeout(int startId, int fgsType) {
+        Logger.e(TAG, "posting foreground service timed out");
+        PostingTask task = clearCurrentTask();
+        if (task != null) task.cancel();
+        stopPostingForeground(false);
+        stopSelf();
     }
     
     public class PostingTask extends CancellableTask.BaseCancellableTask implements Runnable {
-        private final int startId;
         private final String hash;
         private final SendPostModel sendPostModel;
         private final BoardModel boardModel;
+        private final NotificationCompat.Builder progressNotifBuilder;
         
         private long maxProgressValue = 100;
         private int curProgress = -1;
+        private boolean keepNotification;
         
-        public PostingTask(int startId, String hash, SendPostModel sendPostModel, BoardModel boardModel) {
-            this.startId = startId;
+        public PostingTask(String hash, SendPostModel sendPostModel, BoardModel boardModel) {
             this.hash = hash;
             this.sendPostModel = sendPostModel;
             this.boardModel = boardModel;
+
+            Intent intentToProgressDialog = new Intent(PostingService.this, PostingProgressActivity.class);
+            intentToProgressDialog.putExtra(EXTRA_IS_POSTING_THREAD, sendPostModel.threadNumber == null);
+            PendingIntent pIntentToProgressDialog = PendingIntent.getActivity(
+                    PostingService.this,
+                    0,
+                    intentToProgressDialog,
+                    PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            String notifTitle = sendPostModel.threadNumber == null
+                    ? getString(R.string.posting_thread)
+                    : getString(R.string.posting_post);
+            String notifText = sendPostModel.threadNumber == null
+                    ? getString(R.string.posting_thread_format, sendPostModel.chanName, sendPostModel.boardName)
+                    : getString(
+                            R.string.posting_post_format,
+                            sendPostModel.chanName,
+                            sendPostModel.boardName,
+                            sendPostModel.threadNumber);
+            progressNotifBuilder = new NotificationCompat.Builder(PostingService.this, "posting")
+                    .setSmallIcon(android.R.drawable.stat_sys_upload)
+                    .setTicker(notifTitle)
+                    .setContentTitle(notifTitle)
+                    .setContentText(notifText)
+                    .setContentIntent(pIntentToProgressDialog)
+                    .setOngoing(true)
+                    .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                    .setProgress(100, 0, true);
         }
         
         public int getCurrentProgress() {
             return curProgress;
         }
+
+        public Notification getProgressNotification() {
+            return progressNotifBuilder.build();
+        }
+
+        public boolean shouldKeepNotification() {
+            return keepNotification;
+        }
         
         @Override
         public void run() {
-            if (sendPostModel == null) {
-                Logger.e(TAG, "sendPostModel == null");
-                return;
+            try {
+                sendPost();
+            } finally {
+                finishTask(this);
             }
-            
-            Logger.d(TAG, "start; nowPosting = true");
-            nowPosting = true;
-            
-            Intent intentToProgressDialog = new Intent(PostingService.this, PostingProgressActivity.class);
-            intentToProgressDialog.putExtra(EXTRA_IS_POSTING_THREAD, sendPostModel.threadNumber == null);
-            PendingIntent pIntentToProgressDialog =
-                    PendingIntent.getActivity(PostingService.this, 0, intentToProgressDialog, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
 
-            final String notifTitle = sendPostModel.threadNumber == null ? getString(R.string.posting_thread) : getString(R.string.posting_post);
-            String notifText = sendPostModel.threadNumber == null ?
-                    getString(R.string.posting_thread_format, sendPostModel.chanName, sendPostModel.boardName) :
-                    getString(R.string.posting_post_format, sendPostModel.chanName, sendPostModel.boardName, sendPostModel.threadNumber);
-            
-            final NotificationCompat.Builder progressNotifBuilder = new NotificationCompat.Builder(PostingService.this, "posting").
-                    setSmallIcon(android.R.drawable.stat_sys_upload).
-                    setTicker(notifTitle).
-                    setContentTitle(notifTitle).
-                    setContentText(notifText).
-                    setContentIntent(pIntentToProgressDialog).
-                    setOngoing(true).
-                    setCategory(NotificationCompat.CATEGORY_PROGRESS).
-                    setProgress(100, 0, true);
-            
-            notificationManager.notify(POSTING_NOTIFICATION_ID, progressNotifBuilder.build());
-            
+        private void sendPost() {
             boolean success = false;
             String targetUrl = null;
             try {
@@ -252,6 +362,7 @@ public class PostingService extends Service {
                             setAutoCancel(true).
                             setCategory(NotificationCompat.CATEGORY_ERROR);
                     notificationManager.notify(POSTING_NOTIFICATION_ID, errorNotifBuilder.build());
+                    keepNotification = true;
                     InternalBroadcasts.send(PostingService.this, broadcastIntent);
                 }
             }
@@ -332,6 +443,7 @@ public class PostingService extends Service {
                         setOngoing(false).
                         setAutoCancel(true);
                 notificationManager.notify(POSTING_NOTIFICATION_ID, successNotifBuilder.build());
+                keepNotification = true;
                 Intent broadcastIntent = new Intent(BROADCAST_ACTION_STATUS);
                 broadcastIntent.putExtra(EXTRA_BROADCAST_PROGRESS_STATUS, BROADCAST_STATUS_SUCCESS);
                 broadcastIntent.putExtra(EXTRA_TARGET_URL, targetUrl);
@@ -347,9 +459,6 @@ public class PostingService extends Service {
                 notificationManager.cancel(POSTING_NOTIFICATION_ID);
             }
             
-            Logger.d(TAG, "stop; nowPosting = false");
-            nowPosting = false;
-            stopSelf(startId);
         }
     }
     

@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
@@ -36,9 +37,6 @@ import androidx.preference.PreferenceScreen;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.ChanModule;
 import dev.esoc.esochan.common.Async;
@@ -161,17 +159,6 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
             return true;
         });
 
-        Preference certificatesPreference = findPreference(getString(R.string.pref_key_ssl_certificates));
-        if (CertificatesActivity.hasCertificates()) {
-            certificatesPreference.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(requireActivity(), CertificatesActivity.class));
-                return true;
-            });
-        } else {
-            ((PreferenceGroup) findPreference(getString(R.string.pref_key_cat_advanced)))
-                    .removePreference(certificatesPreference);
-        }
-
         findPreference(getString(R.string.pref_key_autohide)).setOnPreferenceClickListener(preference -> {
             startActivity(new Intent(requireActivity(), AutohideActivity.class));
             return true;
@@ -218,17 +205,13 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
             } else {
                 for (int autoupdateKey : KEYS_AUTOUPDATE) {
                     if (getString(autoupdateKey).equals(key)) {
-                        if (TabsTrackerService.isRunning()) {
-                            requireActivity().stopService(new Intent(requireActivity(), TabsTrackerService.class));
-                        }
-                        if (MainApplication.getInstance().settings.isAutoupdateEnabled()) {
-                            requireActivity().startService(new Intent(requireActivity(), TabsTrackerService.class));
-                        }
+                        TabsTrackerService.syncWithVisibleUi(requireActivity());
                     }
                 }
                 if (getString(R.string.pref_key_show_nsfw_boards).equals(key)) {
-                    if (MainApplication.getInstance().tabsSwitcher.currentFragment instanceof BoardsListFragment) {
-                        ((BoardsListFragment) MainApplication.getInstance().tabsSwitcher.currentFragment).updateList();
+                    Fragment currentFragment = MainApplication.getInstance().tabsSwitcher.getCurrentFragment();
+                    if (currentFragment instanceof BoardsListFragment) {
+                        ((BoardsListFragment) currentFragment).updateList();
                     }
                 }
             }
@@ -291,36 +274,9 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
         PreferencesActivity.needUpdateChansScreen = false;
         chansScreen.removeAll();
 
-        ApplicationSettings settings = MainApplication.getInstance().settings;
-        List<ChanModule> unlocked = new ArrayList<>();
-        for (ChanModule chan : MainApplication.getInstance().chanModulesList) {
-            if (settings.isUnlockedChan(chan.getChanName())) {
-                unlocked.add(chan);
-            }
-        }
-
-        if (unlocked.size() == 1) {
-            unlocked.get(0).addPreferencesOnScreen(chansScreen);
-            return;
-        }
-
-        for (ChanModule chan : unlocked) {
-            PreferenceScreen curScreen = getPreferenceManager().createPreferenceScreen(requireContext());
-            curScreen.setTitle(chan.getDisplayingName());
-            curScreen.setKey("chan_preference_screen_" + chan.getChanName());
-            curScreen.setIcon(chan.getChanFavicon());
-            chansScreen.addPreference(curScreen);
-            chan.addPreferencesOnScreen(curScreen);
-        }
-
-        if (unlocked.size() >= 2) {
-            Preference rearrange = new Preference(requireContext());
-            rearrange.setTitle(R.string.pref_chans_rearrange);
-            rearrange.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(requireActivity(), ChansSortActivity.class));
-                return true;
-            });
-            chansScreen.addPreference(rearrange);
+        ChanModule chan = MainApplication.getInstance().getChanModule();
+        if (MainApplication.getInstance().settings.isUnlockedChan(chan.getChanName())) {
+            chan.addPreferencesOnScreen(chansScreen);
         }
     }
 }

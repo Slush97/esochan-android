@@ -335,18 +335,30 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
     
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
         saveCurrentPostPosition();
+        if (currentTask != null) currentTask.cancel();
+        currentTask = null;
         if (toast != null) toast.hide();
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+        toast = null;
         if (listView != null) {
+            unregisterForContextMenu(listView);
+            listView.setOnItemClickListener(null);
             listView.setOnLongClickListener(null);
             listView.setAdapter(null);
         }
+        if (boardField != null) boardField.setOnKeyListener(null);
+        if (buttonGo != null) buttonGo.setOnClickListener(null);
+
+        binding = null;
+        rootView = null;
+        loadingView = null;
+        errorView = null;
+        errorTextView = null;
+        listView = null;
+        boardField = null;
+        buttonGo = null;
+        adapter = null;
+        super.onDestroyView();
     }
     
     private void saveCurrentPostPosition() {
@@ -361,6 +373,7 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
     }
     
     private void switchToLoadingView() {
+        if (loadingView == null || errorView == null || listView == null) return;
         loadingView.setVisibility(View.VISIBLE);
         errorView.setVisibility(View.GONE);
         listView.setVisibility(View.GONE);
@@ -374,6 +387,7 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
     }
     
     private void switchToErrorView(String message) {
+        if (loadingView == null || errorView == null || listView == null || errorTextView == null) return;
         loadingView.setVisibility(View.GONE);
         errorView.setVisibility(View.VISIBLE);
         listView.setVisibility(View.GONE);
@@ -381,6 +395,7 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
     }
     
     private void switchToListView() {
+        if (loadingView == null || errorView == null || listView == null) return;
         loadingView.setVisibility(View.GONE);
         errorView.setVisibility(View.GONE);
         listView.setVisibility(View.VISIBLE);
@@ -415,6 +430,7 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
     }
     
     private void update(boolean forceUpdate) {
+        if (listView == null || binding == null) return;
         listView.setAdapter(null);
         adapter = null;
         switchToLoadingView();
@@ -494,6 +510,7 @@ public class BoardsListFragment extends Fragment implements AdapterView.OnItemCl
             Async.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (isCancelled() || binding == null || listView == null) return;
                     listView.setAdapter(adapter);
                     listView.setSelectionFromTop(startItemPosition, startItemTop);
                     switchToListView();

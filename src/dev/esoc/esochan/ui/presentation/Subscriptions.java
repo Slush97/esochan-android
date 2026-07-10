@@ -241,7 +241,8 @@ public class Subscriptions {
     }
     
     private static class SubscriptionsDB {
-        private static final int DB_VERSION = 1000;
+        private static final int DB_VERSION_PRESERVE_USER_DATA = 1001;
+        private static final int DB_VERSION = DB_VERSION_PRESERVE_USER_DATA;
         private static final String DB_NAME = "subscriptions.db";
         
         private static final String TABLE_NAME = "subscriptions";
@@ -351,19 +352,20 @@ public class Subscriptions {
             
             @Override
             public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-                if (oldVersion < newVersion) {
-                    db.execSQL(dropTable(TABLE_NAME));
+                if (oldVersion < DB_VERSION_PRESERVE_USER_DATA) {
+                    // Version 1000 already used this layout. Keep existing rows and
+                    // only repair a missing table after an interrupted first launch.
                     onCreate(db);
                 }
             }
             
             @Override
             public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-                onUpgrade(db, oldVersion, newVersion);
+                onCreate(db);
             }
             
             private static String createTable(String tableName, String[] columns, String[] types) {
-                StringBuilder sql = new StringBuilder(110).append("create table ").append(tableName).append(" (").
+                StringBuilder sql = new StringBuilder(110).append("create table if not exists ").append(tableName).append(" (").
                         append(_ID).append(" integer primary key autoincrement,");
                 for (int i=0; i<columns.length; ++i) {
                     sql.append(columns[i]).append(' ').append(types == null ? "text" : types[i]).append(',');
