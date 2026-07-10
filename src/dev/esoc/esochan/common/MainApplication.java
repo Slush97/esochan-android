@@ -18,13 +18,6 @@
 
 package dev.esoc.esochan.common;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.ChanModule;
 import dev.esoc.esochan.cache.BitmapCache;
@@ -32,9 +25,8 @@ import dev.esoc.esochan.cache.DraftsCache;
 import dev.esoc.esochan.cache.FileCache;
 import dev.esoc.esochan.cache.PagesCache;
 import dev.esoc.esochan.cache.Serializer;
-import dev.esoc.esochan.http.client.ExtendedTrustManager;
+import dev.esoc.esochan.chans.fourchan.FourchanModule;
 import dev.esoc.esochan.http.streamer.HttpStreamer;
-import org.json.JSONArray;
 import dev.esoc.esochan.ui.Database;
 import dev.esoc.esochan.ui.downloading.DownloadingLocker;
 import dev.esoc.esochan.ui.presentation.Subscriptions;
@@ -68,11 +60,7 @@ import dev.esoc.esochan.ui.gallery.GalleryActivity;
  */
 
 public class MainApplication extends Application {
-    
-    private static final String[] MODULES = new String[] {
-            "dev.esoc.esochan.chans.fourchan.FourchanModule",
-    };
-    
+
     private static MainApplication instance;
     public static MainApplication getInstance() {
         if (instance == null) throw new IllegalStateException("Must be called after onCreate()");
@@ -94,81 +82,23 @@ public class MainApplication extends Application {
     public TabsState tabsState;
     public TabsSwitcher tabsSwitcher;
     
-    public List<ChanModule> chanModulesList;
-    private Map<String, Integer> chanModulesIndex;
-    
-    private void registerChanModules() {
-        chanModulesIndex = new HashMap<String, Integer>();
-        chanModulesList = new ArrayList<ChanModule>();
-        registerChanModules(chanModulesList, chanModulesIndex);
+    private FourchanModule fourchanModule;
+
+    /** Returns the only runtime chan implementation. */
+    public ChanModule getChanModule() {
+        return fourchanModule;
     }
-    
-    public void updateChanModulesOrder() {
-        Map<String, ChanModule> instantiatedMap = new HashMap<>();
-        for (ChanModule chan : chanModulesList) instantiatedMap.put(chan.getClass().getName(), chan);
-        
-        Map<String, Integer> indexMap = new HashMap<>();
-        List<ChanModule> list = new ArrayList<>();
-        registerChanModules(list, indexMap, instantiatedMap);
-        chanModulesIndex = indexMap;
-        chanModulesList = list;
-    }
-    
-    private void registerChanModules(List<ChanModule> outList, Map<String, Integer> outIndexMap) {
-        registerChanModules(outList, outIndexMap, null);
-    }
-    
-    private void registerChanModules(List<ChanModule> outList, Map<String, Integer> outIndexMap, Map<String, ChanModule> instantiatedClassMap) {
-        Set<String> added = new HashSet<>();
-        JSONArray order;
-        try {
-            order = new JSONArray(settings.getChansOrderJson());
-        } catch (Exception e) {
-            order = new JSONArray();
-        }
-        for (int i=0; i<order.length(); ++i) {
-            String module = order.optString(i);
-            if (!added.contains(module)) {
-                if (instantiatedClassMap != null && instantiatedClassMap.containsKey(module)) {
-                    addChanModule(instantiatedClassMap.get(module), outList, outIndexMap);
-                } else {
-                    addChanModule(module, outList, outIndexMap);
-                }
-            }
-            added.add(module);
-        }
-        for (String module : MODULES) {
-            if (!added.contains(module)) {
-                if (instantiatedClassMap != null && instantiatedClassMap.containsKey(module)) {
-                    addChanModule(instantiatedClassMap.get(module), outList, outIndexMap);
-                } else {
-                    addChanModule(module, outList, outIndexMap);
-                }
-            }
-            added.add(module);
-        }
-    }
-    
-    private void addChanModule(String className, List<ChanModule> list, Map<String, Integer> indexMap) {
-        try {
-            Class<?> c = Class.forName(className);
-            addChanModule((ChanModule) c.getConstructor(SharedPreferences.class, Resources.class).newInstance(preferences, resources),
-                    list, indexMap);
-        } catch (Exception e) {}
-    }
-    
-    private void addChanModule(ChanModule module, List<ChanModule> list, Map<String, Integer> indexMap) {
-        indexMap.put(module.getChanName(), list.size());
-        list.add(module);
-    }
-    
+
+    /**
+     * Resolves persisted chan identifiers without changing their serialized representation.
+     * Unknown identifiers from removed clients deliberately remain unsupported.
+     */
     public ChanModule getChanModule(String chanName) {
-        if (!chanModulesIndex.containsKey(chanName)) return null;
-        return chanModulesList.get(chanModulesIndex.get(chanName).intValue());
+        if (fourchanModule == null || !fourchanModule.getChanName().equals(chanName)) return null;
+        return fourchanModule;
     }
     
     private void initObjects() {
-        ExtendedTrustManager.setAppContext(this);
         HttpStreamer.initInstance();
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         resources = this.getResources();
@@ -187,7 +117,7 @@ public class MainApplication extends Application {
         subscriptions = new Subscriptions(this);
         downloadingLocker = new DownloadingLocker();
         
-        registerChanModules();
+        fourchanModule = new FourchanModule(preferences, resources);
         
         Wifi.register(this);
     }
@@ -217,7 +147,7 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        registerActivityLifecycleCallbacks(new EdgeToEdgeCallbacks());
+        registerActivityLifecycleCallbacks(new LegacyInsetsCallbacks());
         if (isGalleryProcess()) return;
         initObjects();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -261,11 +191,10 @@ public class MainApplication extends Application {
     }
 
     /**
-     * On SDK 35+, Android enforces edge-to-edge rendering (content behind transparent
-     * system bars). Restore the pre-35 default of fitting content within system bars
-     * for all activities except GalleryActivity, which manages its own immersive mode.
+     * Temporary compatibility behavior for legacy activity roots that do not yet
+     * consume system-bar insets consistently. GalleryActivity owns its immersive mode.
      */
-    private static class EdgeToEdgeCallbacks implements ActivityLifecycleCallbacks {
+    private static class LegacyInsetsCallbacks implements ActivityLifecycleCallbacks {
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
             if (!(activity instanceof GalleryActivity)) {
