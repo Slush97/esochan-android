@@ -20,10 +20,14 @@ package dev.esoc.esochan.ui.settings;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.preference.EditTextPreference;
@@ -37,6 +41,7 @@ import androidx.preference.PreferenceScreen;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.api.ChanModule;
 import dev.esoc.esochan.common.Async;
@@ -44,11 +49,13 @@ import dev.esoc.esochan.common.MainApplication;
 import dev.esoc.esochan.ui.BoardsListFragment;
 import dev.esoc.esochan.ui.tabs.TabsTrackerService;
 import dev.esoc.esochan.ui.tabs.UrlHandler;
+import dev.esoc.esochan.ui.theme.ThemeUtils;
 
 public class PreferencesFragment extends PreferenceFragmentCompat {
     private final ArrayDeque<PreferenceScreen> screenStack = new ArrayDeque<>();
     private SharedPreferences.OnSharedPreferenceChangeListener sharedPreferenceChangeListener;
     private SharedPreferences sharedPreferences;
+    private boolean recreatePending;
 
     private static final int[] KEYS_AUTOUPDATE = new int[] {
             R.string.pref_key_enable_autoupdate,
@@ -61,6 +68,24 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
         setPreferencesFromResource(R.xml.preferences, rootKey);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext().getApplicationContext());
         setupRootPreferences();
+        restoreNavStackIfNeeded();
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        applyPreferenceDividers();
+    }
+
+    private void applyPreferenceDividers() {
+        // Material Preference styles suppress dividers via allowDividerAbove=false;
+        // styles flip that, and we force a readable hairline here (listSeparator is often
+        // too close to the page background on dark themes like Tomorrow).
+        int fg = ThemeUtils.getThemeColor(requireContext().getTheme(),
+                android.R.attr.textColorPrimary, 0xFF808080);
+        int color = (fg & 0x00FFFFFF) | 0x38000000;
+        setDivider(new ColorDrawable(color));
+        setDividerHeight(Math.max(1, Math.round(getResources().getDisplayMetrics().density)));
     }
 
     void openScreen(PreferenceScreen screen) {
@@ -199,6 +224,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
         });
 
         sharedPreferenceChangeListener = (prefs, key) -> {
+            if (key == null) return;
             Preference preference = findPreference(key);
             if (preference instanceof ListPreference) {
                 updateListSummary(key);
@@ -214,6 +240,10 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
                         ((BoardsListFragment) currentFragment).updateList();
                     }
                 }
+            }
+            if (getString(R.string.pref_key_theme).equals(key)
+                    || getString(R.string.pref_key_font_size).equals(key)) {
+                recreateActivityForTheme();
             }
         };
 
@@ -277,6 +307,39 @@ public class PreferencesFragment extends PreferenceFragmentCompat {
         ChanModule chan = MainApplication.getInstance().getChanModule();
         if (MainApplication.getInstance().settings.isUnlockedChan(chan.getChanName())) {
             chan.addPreferencesOnScreen(chansScreen);
+        }
+    }
+
+    void prepareRecreateForTheme() {
+        ArrayList<String> navKeys = new ArrayList<>();
+        for (PreferenceScreen screen : screenStack) {
+            if (screen.getKey() != null) navKeys.add(screen.getKey());
+        }
+        PreferenceScreen current = getPreferenceScreen();
+        if (current != null && current.getKey() != null) {
+            navKeys.add(current.getKey());
+        }
+        requireActivity().getIntent().putStringArrayListExtra(
+                PreferencesActivity.EXTRA_PREF_NAV_STACK, navKeys);
+    }
+
+    private void recreateActivityForTheme() {
+        if (recreatePending || getActivity() == null) return;
+        recreatePending = true;
+        prepareRecreateForTheme();
+        requireActivity().recreate();
+    }
+
+    private void restoreNavStackIfNeeded() {
+        Intent intent = requireActivity().getIntent();
+        ArrayList<String> navKeys = intent.getStringArrayListExtra(PreferencesActivity.EXTRA_PREF_NAV_STACK);
+        if (navKeys == null || navKeys.isEmpty()) return;
+        intent.removeExtra(PreferencesActivity.EXTRA_PREF_NAV_STACK);
+        for (String key : navKeys) {
+            Preference preference = findPreference(key);
+            if (preference instanceof PreferenceScreen) {
+                openScreen((PreferenceScreen) preference);
+            }
         }
     }
 }

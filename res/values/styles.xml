@@ -60,9 +60,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="android:backgroundDimAmount">0.8</item>
     </style>
 
-    <!-- Material Preference reserves empty icon gutters on sw360dp+; old PreferenceActivity did not. -->
+    <!-- Material Preference reserves empty icon gutters on sw360dp+; old PreferenceActivity did not.
+         Category headers use itemInfoForeground (muted chrome), not postNameForeground (4chan name green/blue). -->
     <style name="EsoPreferenceTheme" parent="@style/PreferenceThemeOverlay">
-        <item name="preferenceCategoryTitleTextColor">?attr/postNameForeground</item>
+        <item name="preferenceCategoryTitleTextColor">?attr/itemInfoForeground</item>
         <item name="preferenceStyle">@style/EsoPreference</item>
         <item name="preferenceCategoryStyle">@style/EsoPreferenceCategory</item>
         <item name="preferenceScreenStyle">@style/EsoPreference</item>
@@ -70,30 +71,49 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="dialogPreferenceStyle">@style/EsoDialogPreference</item>
         <item name="editTextPreferenceStyle">@style/EsoEditTextPreference</item>
         <item name="dropdownPreferenceStyle">@style/EsoDropDownPreference</item>
+        <item name="preferenceFragmentCompatStyle">@style/EsoPreferenceFragment</item>
     </style>
 
+    <style name="EsoPreferenceFragment" parent="@style/PreferenceFragment.Material">
+        <item name="android:divider">@drawable/preference_divider</item>
+        <item name="allowDividerAfterLastItem">false</item>
+    </style>
+
+    <!-- Material defaults allowDividerAbove=false, so hairlines never draw between rows. -->
     <style name="EsoPreference" parent="@style/Preference.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <style name="EsoPreferenceCategory" parent="@style/Preference.Category.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <style name="EsoCheckBoxPreference" parent="@style/Preference.CheckBoxPreference.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <style name="EsoDialogPreference" parent="@style/Preference.DialogPreference.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <style name="EsoEditTextPreference" parent="@style/Preference.DialogPreference.EditTextPreference.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <style name="EsoDropDownPreference" parent="@style/Preference.DropDown.Material">
         <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="allowDividerBelow">true</item>
     </style>
 
     <!-- Applied on top of the selected app theme in PreferencesActivity only. -->
@@ -239,7 +259,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="android:textColorPrimary">#FFFFFE</item>
     </style>
     
-    <!-- Themes — Yotsuba / Yotsuba B / Photon / Tomorrow match s.4cdn.org CSS; Paper/Neutron/Midnight are app extras -->
+    <!-- Themes — board/body colors follow s.4cdn.org; postTitleForeground is slightly muted vs pure CSS
+         for denser mobile cards (desktop 4chan has more whitespace around .filetitle/.subject). -->
     
     <!-- 4chan Yotsuba (yotsubanew); pref key still PREF_THEME_VALUE_FUTABA -->
     <style name="Theme_Futaba" parent="@style/Theme_Light_Base">
@@ -260,7 +281,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#117743</item>
-        <item name="postTitleForeground">#CC1105</item>
+        <item name="postTitleForeground">#A31008</item>
         <item name="postQuoteForeground">#789922</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -290,7 +311,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#117743</item>
-        <item name="postTitleForeground">#0F0C5D</item>
+        <item name="postTitleForeground">#0C0A4A</item>
         <item name="postQuoteForeground">#789922</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -319,7 +340,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#FF3300</item>
-        <item name="postTitleForeground">#111111</item>
+        <item name="postTitleForeground">#1A1A1A</item>
         <item name="postQuoteForeground">#789922</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -348,7 +369,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#228854</item>
-        <item name="postTitleForeground">#3941AC</item>
+        <item name="postTitleForeground">#4A6BB5</item>
         <item name="postQuoteForeground">#789922</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -377,7 +398,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#228854</item>
-        <item name="postTitleForeground">#0F0C5D</item>
+        <item name="postTitleForeground">#0C0A4A</item>
         <item name="postQuoteForeground">#5C8A00</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -406,7 +427,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#008000</item>
         <item name="postSageForeground">#993333</item>
         <item name="postTripForeground">#C5C8C6</item>
-        <item name="postTitleForeground">#B294BB</item>
+        <item name="postTitleForeground">#A38BAD</item>
         <item name="postQuoteForeground">#B5BD68</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>
@@ -435,7 +456,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         <item name="postOpForeground">#43A047</item>
         <item name="postSageForeground">#B37070</item>
         <item name="postTripForeground">#5F89AC</item>
-        <item name="postTitleForeground">#90CAF9</item>
+        <item name="postTitleForeground">#7EB6E0</item>
         <item name="postQuoteForeground">#9DBB57</item>
         <item name="spoilerForeground">#FFFFFF</item>
         <item name="spoilerBackground">#000000</item>

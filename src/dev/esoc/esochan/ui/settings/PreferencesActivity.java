@@ -30,15 +30,21 @@ import androidx.preference.PreferenceScreen;
 
 import dev.esoc.esochan.R;
 import dev.esoc.esochan.common.MainApplication;
+import dev.esoc.esochan.ui.theme.GenericThemeEntry;
 
 public class PreferencesActivity extends AppCompatActivity
         implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 
     public static boolean needUpdateChansScreen = false;
 
+    static final String EXTRA_PREF_NAV_STACK = "pref_nav_stack";
+
+    private GenericThemeEntry theme;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        MainApplication.getInstance().settings.getTheme().setToPreferencesActivity(this);
+        theme = MainApplication.getInstance().settings.getTheme();
+        theme.setToPreferencesActivity(this);
         getTheme().applyStyle(R.style.Theme_Preferences_NoActionBar, true);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preferences);
@@ -68,6 +74,18 @@ public class PreferencesActivity extends AppCompatActivity
                     .beginTransaction()
                     .replace(R.id.preferences_container, new PreferencesFragment())
                     .commit();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!MainApplication.getInstance().settings.getTheme().equals(theme)) {
+            Fragment current = getSupportFragmentManager().findFragmentById(R.id.preferences_container);
+            if (current instanceof PreferencesFragment) {
+                ((PreferencesFragment) current).prepareRecreateForTheme();
+            }
+            recreate();
         }
     }
 
