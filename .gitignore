@@ -17,6 +17,11 @@ keystore.properties
 .gradle/*
 .idea/*
 build/*
+**/build/
+.kotlin/
 *.iml
 
 *.hprof
+
+screenshots/
+*-screenshot.png
